@@ -5,9 +5,19 @@ const jwt = require('jsonwebtoken')
 const Task = require('../model/task')
 
 const userSchema = new mongoose.Schema({
-    name: {
+    nombre: {
         type: String,
         required: true,
+        trim: true
+    },
+    apellido_paterno: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    apellido_materno: {
+        type: String,
+        required: false,
         trim: true
     },
     email:{
@@ -21,15 +31,22 @@ const userSchema = new mongoose.Schema({
             }   
         }
     },
-    age: {
-        type: Number,
-        default: 18,
-        validate(value){
-
-            if( value < 1 ){
-                throw new Error('Edad no valida..')
-            }   
-        }
+    fecha_nacimiento: {
+        type: Date,
+        default: Date.now
+    },
+    genero: {
+        type: String,
+        required: true,
+        default: 'M'
+    },
+    estado_nacimiento:{
+        type: String,
+        required: false
+    },
+    curp: {
+        type: String,
+        required: false
     },
     password:{
         type: String,
@@ -41,15 +58,42 @@ const userSchema = new mongoose.Schema({
 
         }
     },
-    phone:{
+    celular:{
         type: String,
         trim: true,
         validate(celphone){
             if( ! (validador.isLength( celphone, { min:10 } ) )  ){
-                throw new Error('Phone number no less than 10 ')
+                throw new Error('Numero de celular debe ser de 10 digitos... ')
             }
-        }
+        },
     },
+    otro_numero: {
+        type: String,
+        required: false
+    },
+    domicilios: [{
+        linea1: String,
+        linea2: String,
+        colonia: String,
+        estado: String,
+        desde: Number,
+        activo: Boolean,
+        por_omision: Boolean
+    }],
+    socioeconomicos: [{
+        empleo_formal: false,
+        fuente_ingresos: String,
+        nombre_empresa: String,
+        puesto: String,
+        sector: String,
+        numero_fijo: String,
+        principal: Boolean,
+        ingresos_mes: Number,
+        pago_bancario: false,
+        otros_ingresos: Number,
+        dependientes: Number,
+        activo: Boolean
+    }],
     avatar:{
         type: Buffer,
         required: false
@@ -102,13 +146,13 @@ userSchema.statics.findUserByCredentials = async ( email, password ) => {
     const user = await User.findOne( {email} )
 
     if( !user ){
-        throw new Error('No puede logearse...')
+        throw new Error('No puede loguearse...')
     }
 
     const isMatch = await bcrypt.compare( password, user.password )
 
     if( !isMatch ){
-        throw new Error ('No puede logearse...')
+        throw new Error ('No puede loguearse...')
     }
 
     return user
