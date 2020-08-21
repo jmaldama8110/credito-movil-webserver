@@ -8,7 +8,7 @@ const sendWelcomeEmail = ( email, name )=>{
     sgMail.send({
         to: email,
         from: 'jmgomez@moviltech.mx',
-        subject: `${name} Bienvenido a Taskman!`,
+        subject: `${name} Bienvenido!`,
         text: `Bienvenido ${name} a nuestra comunidad`
     })
 

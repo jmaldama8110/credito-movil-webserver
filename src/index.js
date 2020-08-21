@@ -1,18 +1,19 @@
 
 const app = require('./app')
+const {cliente} = require('./db/cassandra-db')
 
-// const express = require('express')
-// require('./db/mongoose')
-
-// const userRouter = require('./routers/user')
-// const taskRouter = require('./routers/task')
-
-// const app = express()
 const port = process.env.PORT || 3000
 
-// app.use( express.json() )
-// app.use(userRouter)
-// app.use(taskRouter)
+const fxEjecutar = async () =>{
+    await cliente.connect();
+    
+    // Execute a query
+    const rs =  await cliente.execute('SELECT * FROM system.local');
+    console.log(`Hello from cluster: ${rs.first()['cluster_name']}`);
+    
+}
+
+fxEjecutar();
 
 app.listen(port, ()=>{
     console.log('Server is up and running...at ' + port)
