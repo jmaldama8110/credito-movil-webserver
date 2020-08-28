@@ -6,6 +6,7 @@ const usuarioMapper = require('../model/usuario')
 // -> crear la funcion de crear usuario con correo y contraseña y generar token con JWT
 // -> Usar TTL para el token?
 // -> Con el token enviando desde el request, buscar si existe dentro del array y que coincida con el usuarios buscado
+// -> Corregir authcass.js para buscar Usuario con base en el token enviado en la peticion
 
 const authcass = async (req, res, next) => {
 

@@ -11,7 +11,7 @@ const mapper = new Mapper(cliente, {
     models: {
         'Usuario': {
             tables:
-                ['usuarios'],
+                ['usuario'],
             keyspace: 'pruebaks'
         }
     }
