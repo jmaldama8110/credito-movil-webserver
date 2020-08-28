@@ -7,11 +7,11 @@ const bcrypt = require('bcryptjs')
 const express = require('express')
 const router = new express.Router()
 
-
 router.get('/usuarios/yo', authcass, (req, res) => { // GET perfil del usuario
     res.send(req.user);
 })
 
+// CREAR usuario
 router.post('/usuarios', async (req, res) => {
 
     try {
@@ -19,6 +19,7 @@ router.post('/usuarios', async (req, res) => {
         const newId = uuidv4();
         const token = generarTokenAcceso(newId)
 
+        //// VALOR por Default /////////////
         const {
             id = newId,
             apellido_materno = '',
@@ -40,7 +41,7 @@ router.post('/usuarios', async (req, res) => {
                                 email,
                                 password: encodedPass,
                                 numero_movil }
-
+        ////////////////////////////////////////
         
         await usuarioMapper.insert(usuarioNuevo);
 
