@@ -2,8 +2,11 @@ const cassandra = require('cassandra-driver');
 const Client = cassandra.Client;
 const Mapper = cassandra.mapping.Mapper;
 
+const ruta = require('path');
+const bundleLocation = ruta.join(__dirname,'../bundle/secure-connect-consandra.zip');
+
 const cliente = new Client({
-    cloud: { secureConnectBundle: '/Users/josemanuel/Desktop/node01/credito-movil-webserver/secure-connect-consandra.zip' },
+    cloud: { secureConnectBundle: bundleLocation },
     credentials: { username: process.env.DATASTAX_USER, password: process.env.DATASTAX_USER_PASSWORD }
 });
 
