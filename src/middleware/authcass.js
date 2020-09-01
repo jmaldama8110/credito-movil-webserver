@@ -1,7 +1,6 @@
 //const jwt = require('jsonwebtoken')
 const usuarioMapper = require('../model/usuario')
 
-// LOGRO:ya pude usar el Mapper para el mapeo de tablas, y agregue en la funcion authcass
 // -> agregar columna en pruebaks/usuarios para guardar el Array de tokens = HECHO
 // -> crear la funcion de crear usuario con correo y contraseña y generar token con JWT
 // -> Usar TTL para el token?
@@ -12,6 +11,7 @@ const authcass = async (req, res, next) => {
 
     try {
 
+        const token = req.header('Authorization').replace('Bearer ','')
         const user = await usuarioMapper.get({ id: 'c867ffe0-e34c-11ea-ba49-938e8fb32bbd' });
 
         if (!user) {

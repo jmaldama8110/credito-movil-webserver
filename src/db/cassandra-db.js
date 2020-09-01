@@ -14,8 +14,8 @@ const mapper = new Mapper(cliente, {
     models: {
         'Usuario': {
             tables:
-                ['usuario'],
-            keyspace: 'pruebaks'
+                ['usuarios','usuario_credenciales','usuario_tokens'],
+            keyspace: process.env.DATASTAX_KEYSPACE
         }
     }
 });
