@@ -1,27 +1,27 @@
 
 const app = require('./app')
-const {cliente} = require('./db/cassandra-db')
+const { cliente } = require('./db/cassandra-db')
 
 const port = process.env.PORT || 3000
 
-const fxEjecutar = async () =>{
+const fxEjecutar = async () => {
 
-    try{
+    try {
         await cliente.connect();
-    
+
         // Execute a query
-        const rs =  await cliente.execute('SELECT * FROM system.local');
-        console.log(`Hello from cluster: ${rs.first()['cluster_name']}`);    
+        const rs = await cliente.execute('SELECT * FROM system.local');
+        console.log(`Hello from cluster: ${rs.first()['cluster_name']}`);
     }
-    catch(error){
+    catch (error) {
         console.log(error);
     }
-    
+
 }
 
 fxEjecutar();
 
-app.listen(port, ()=>{
+app.listen(port, () => {
     console.log('Server is up and running...at ' + port)
 })
 
