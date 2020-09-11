@@ -19,11 +19,15 @@ const mapper = new Mapper(cliente, {
                 ['usuarios','usuario_credenciales','usuario_tokens'],
             keyspace: process.env.DATASTAX_KEYSPACE,
             columns: {
-                'usuario_id': 'usuarioId',
-                'numero_movil': 'numeroMovil',
+                'account_no': 'accountNo',
                 'tokens': 'token'
               },
               mappings: new UnderscoreCqlToCamelCaseMappings()
+        },
+        'Credenciales': {
+            tables:
+                ['usuario_credenciales'],
+            keyspace: process.env.DATASTAX_KEYSPACE
         },
         'Tokens': {
             tables:

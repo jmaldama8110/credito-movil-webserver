@@ -1,17 +1,21 @@
 
-const { v4: uuidv4 } = require('uuid');
-
 const authcass = require('../middleware/authcass')
 const axios = require('axios');
+const bcrypt = require('bcryptjs')
+const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
+const sharp = require('sharp');
 
-const { usuarioMapper, tokensMapper,
-    findUsuarioPorMovil,
+const { usuarioMapper, tokensMapper, credencialesMapper,
+    findUsuarioPorAccountNo,
     findUsuarioPorCredenciales,
-    generarTokenAcceso } = require('../model/usuario')
+    generarTokenAcceso,
+    validarUsuarioJson } = require('../model/usuario')
 
 const { cliente } = require('../db/cassandra-db')
 
-const bcrypt = require('bcryptjs')
+const sendWelcomeSMS = require('../sms/sendsms')
+const sendWelcomeWhatsapp = require('../sms/sendwapp');
 
 const express = require('express');
 const router = new express.Router()
@@ -25,45 +29,52 @@ router.post('/usuarios', async (req, res) => {
 
     try {
 
-        const newId = uuidv4();
-        const token = generarTokenAcceso(newId)
-
-        //// VALOR por Default /////////////
-        const {
-            usuario_id = newId,
-            apellido_materno = '',
-            apellido_paterno = '',
-            nombre = '',
-            password = '',
-            creado_el = Date.now(),
-            numero_movil = '' } = req.body
-
-        const encodedPass = await bcrypt.hash(password, 8);
-        const usuarioNuevo = {
-            usuario_id,
-            apellido_materno,
-            apellido_paterno,
-            nombre,
-            password: encodedPass,
-            creado_el,
-            numero_movil,
-            tokens: token
-        }
-
-        const usuarioBusqueda = await findUsuarioPorMovil(numero_movil);
-
-        if (!usuarioBusqueda) {
-            await usuarioMapper.insert(usuarioNuevo);
-            res.status(201).send({ usuarioNuevo, token })
+        /// primero, valida que no haya errores en el JSON enviando en la peticion
+        const errores = validarUsuarioJson(req.body)
+        if (errores.length > 0) {
+            res.status(400).send(errores);
         }
         else {
-            res.status(400).send('Peticion de registro no valida...')
+
+            const usuarioBusqueda = await findUsuarioPorAccountNo(req.body.account_no);
+
+            if (!usuarioBusqueda) {
+                try {
+                    const newId = uuidv4();
+                    const token = generarTokenAcceso(req.body.account_no)
+
+                    const encodedPass = await bcrypt.hash(req.body.password, 8);
+                    const usuarioNuevo = {
+                        ...req.body,
+                        usuario_id: newId,
+                        password: encodedPass,
+                        creado_el: Date.now(),
+                        tokens: token,
+                        verificado: false
+                    }
+
+                    await usuarioMapper.insert(usuarioNuevo);
+
+                    //sendWelcomeSMS(`+52${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
+                    sendWelcomeWhatsapp(`+521${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
+
+                    res.status(201).send({ usuarioNuevo, token })
+                }
+                catch (error) {
+                    console.log(error)
+                    res.status(500).send(error);
+                }
+            }
+            else {
+                res.status(400).send('El account_no ya se encuentra registrado...')
+            }
+
         }
+
     }
-
     catch (error) {
-
-        res.status(400).send(error);
+        console.log(error);
+        res.status(400).send('Peticion de registro no valida...');
     }
 });
 
@@ -72,17 +83,14 @@ router.post('/usuarios/login', async (req, res) => { // Enviar peticion Login, g
 
     try {
 
-        const user = await findUsuarioPorCredenciales(req.body.numero_movil, req.body.password)
-        const token = generarTokenAcceso(user.usuarioId)
+        const user = await findUsuarioPorCredenciales(req.body.account_no, req.body.password)
+        const token = generarTokenAcceso(user.accountNo)
 
         await tokensMapper.insert({
-            numero_movil: user.numeroMovil,
-            usuario_id: user.usuarioId,
+            account_no: user.accountNo,
             tokens: token,
             creado_el: Date.now()
         });
-
-
 
         res.send({ user: user, token })
 
@@ -99,11 +107,21 @@ router.get('/usuarios/soycliente', authcass, async (req, res) => {
         username: process.env.MIFOS_USERNAME,
         password: process.env.MIFOS_PASSWORD
     }).then(async (respuesta) => {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${respuesta.data.token}`;
-        await axios.get('https://fincoredemo.dnsalias.net/api/v1/clients?office_id=0&search=000001100')
-            .then((response) => {
-                res.send(response.data);
-            }).catch((err) => console.log(err))
+        // solamente si el usuario tiene una valor en account_no
+        if (req.user.account_no) {
+
+            axios.defaults.headers.common['Authorization'] = `Bearer ${respuesta.data.token}`;
+
+            await axios.get('https://fincoredemo.dnsalias.net/api/v1/clients?office_id=0&search=000001100')
+                .then((response) => {
+                    res.send(response.data);
+                }).catch((err) => {
+                    console.log(err);
+                    res.status(404).send();
+
+                })
+        }
+        res.status(404).send();
     }).catch((err) => {
         res.send(err);
     })
@@ -114,28 +132,102 @@ router.get('/usuarios/soycliente', authcass, async (req, res) => {
 router.post('/usuarios/logout', authcass, async (req, res) => {
 
     try {
-        await tokensMapper.remove({ usuario_id: req.user.usuarioId, tokens: req.currentToken })
+        await tokensMapper.remove({
+            account_no: req.user.accountNo,
+            tokens: req.currentToken
+        })
         res.send();
     }
     catch (error) {
-        res.status(500).send()
+        res.status(500).send(error)
     }
 
 })
 
 router.post('/usuarios/logoutall', authcass, async (req, res) => {
 
-    // Use query markers (?) and parameters
-    const query = 'DELETE FROM usuario_tokens WHERE usuario_id=? ';
-    const params = [req.user.usuarioId];
+    try {
+        // Use query markers (?) and parameters
+        const query = 'DELETE FROM usuario_tokens WHERE account_no=? ';
+        const params = [req.user.accountNo];
 
-    // Set the prepare flag in the query options
-    await cliente.execute(query, params, { prepare: true });
+        // Set the prepare flag in the query options
+        await cliente.execute(query, params, { prepare: true });
 
-    res.send();
+        res.send();
+
+    }
+    catch (error) {
+        res.status(401).send(error)
+
+    }
+
 })
 
 
+const upload = multer({
+    //dest: 'avatars', commentado para evitar que envie el archivo sea enviado a la carpeta fisica del server
+    limits: {
+        fileSize: 1000000 // 1,0 megabytes
+    },
+    fileFilter(req, file, cb) { // cb -> callback function
+
+        if (!file.originalname.match(/\.(png|jpg|jpeg)$/)) { // Expresion regular-> checar regex101.com
+            return cb(new Error('Formato de archivo no valido.. solo usar PNG, JPEG, JPG'))
+        }
+
+        cb(undefined, true)
+        // cb( new Error('file type in not accepted') )
+        // cb( undefined, true )
+        // cb( undefined, false )
+    }
+})
+
+// POST actualizar imagen avater del usuario autenticado
+router.post('/usuarios/yo/selfi', authcass, upload.single('selfi'), async (req, res) => {
+
+    const buffer = await sharp(req.file.buffer).resize({ width: 550, height: 550 }).png().toBuffer()
+
+    // req.user.selfi = buffer
+    try {
+        // Use query markers (?) and parameters
+        const query = 'UPDATE usuario_credenciales set avatar=? WHERE account_no=? ';
+        const cadenaBase64 = buffer.toString('base64');
+
+        const params = [buffer, req.user.accountNo];
+
+        // Set the prepare flag in the query options
+        await cliente.execute(query, params, { prepare: true });
+
+        res.send(cadenaBase64);
+    }
+    catch (error) {
+        res.status(401).send(error)
+    }
+
+}, (error, req, res, next) => {  // handle error while loading upload
+    res.status(400).send({ error: error.message })
+})
+
+// GET obtener el avatar de cualquier usuario (sin estar logeado)
+router.get('/usuarios/:id/selfi', async (req, res) => {
+
+    try {
+
+        const usuario = await credencialesMapper.get({ account_no: req.params.id })
+
+        if (!usuario || !usuario.avatar) {
+            throw new Error()
+        }
+
+        res.set('Content-Type', 'image/png') // respues en modo imagen desde el server
+        res.send(usuario.avatar) // send -> campo buffer
+
+    } catch (error) {
+        res.status(404).send(error)
+    }
+
+})
 
 module.exports = router;
 
