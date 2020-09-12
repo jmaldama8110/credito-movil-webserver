@@ -16,12 +16,15 @@ const { cliente } = require('../db/cassandra-db')
 
 const sendWelcomeSMS = require('../sms/sendsms')
 const sendWelcomeWhatsapp = require('../sms/sendwapp');
-
+const mifosToken = require('../middleware/mifostoken')
 const express = require('express');
 const router = new express.Router()
 
 router.get('/usuarios/yo', authcass, async (req, res) => { // GET perfil del usuario
-    res.send(req.user);
+
+    const data = mifosToken();
+
+    res.send({usuario:req.user,data});
 })
 
 // CREAR usuario

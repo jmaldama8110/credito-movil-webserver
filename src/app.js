@@ -1,13 +1,15 @@
 const express = require('express')
-const axios = require('axios');
+const cron = require('node-cron');
 
 const { cliente } = require('./db/cassandra-db')
 const usuarioRouter = require('./routers/usuario')
+const {fxInitMemoryDB,db, currentMifosToken } = require('./middleware/mifostoken');
 
 const app = express()
 
 app.use(express.json())
 app.use(usuarioRouter)
+
 
 const fxInicializar = async () => {
 
@@ -21,23 +23,24 @@ const fxInicializar = async () => {
     catch (error) {
         console.log(error);
     }
-}
-const fxObtenerTokenMifos = async () => {
-    
-    //Obtiene el token a emplear en el server
-    await axios.post('https://fincoredemo.dnsalias.net/api/v1/account/login', {
-        username: process.env.MIFOS_USERNAME,
-        password: process.env.MIFOS_PASSWORD
-    }).then(async (respuesta) => {
-
-        console.log('Obtain access to core banking system...DONE')
-    }).catch((err) => {
-
-    })
 
 }
 
 fxInicializar();
-//fxObtenerTokenMifos();
+
+fxInitMemoryDB();
+
+
+db.each("SELECT data FROM mf", function (err, row) {
+    console.log( row.data.expiration);
+});
+
+// cron.schedule('* * * * * *', () => {
+
+// console.log('hola');
+
+// });
+
+
 
 module.exports = app
