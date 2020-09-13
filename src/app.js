@@ -31,14 +31,14 @@ fxInicializar();
 fxInitMemoryDB();
 
 
-db.each("SELECT data FROM mf", function (err, row) {
-    console.log( row.data.expiration);
-});
 
-// cron.schedule('* * * * * *', () => {
+// cron.schedule('5 * * * * *', () => {
 
-// console.log('hola');
-
+//     // db.each("SELECT data FROM mf", function (err, row) {
+//     //     console.log( row.data.expiration);
+//     // });
+//     console.log(Date.now() );
+    
 // });
 
 
