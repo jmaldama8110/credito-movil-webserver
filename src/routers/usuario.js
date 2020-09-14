@@ -57,7 +57,7 @@ router.post('/usuarios', async (req, res) => {
                     }
 
                     await usuarioMapper.insert(usuarioNuevo);
-                    const codigoActivacion = usuarioNuevo.toString().substring(0,6);
+                    const codigoActivacion = newId.toString().substring(0,6);
                     //sendWelcomeSMS(`+52${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
                     sendWelcomeWhatsapp(`+521${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
 
