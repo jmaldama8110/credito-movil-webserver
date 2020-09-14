@@ -11,3 +11,6 @@ const diffFechaInicioFin = (start, end, tipoMetrica) => {
     
     return duracion.as(tipoMetrica);
 }
+
+
+module.exports = diffFechaInicioFin;

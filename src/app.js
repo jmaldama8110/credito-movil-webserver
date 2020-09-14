@@ -3,7 +3,7 @@ const cron = require('node-cron');
 
 const { cliente } = require('./db/cassandra-db')
 const usuarioRouter = require('./routers/usuario')
-const {fxInitMemoryDB,db, currentMifosToken } = require('./middleware/mifostoken');
+const {fxInitMemoryDB,fxUpdateMemoryDB } = require('./middleware/mifostoken');
 
 const app = express()
 
@@ -31,9 +31,8 @@ fxInicializar();
 fxInitMemoryDB();
 
 
-cron.schedule('* * * * *', () => {
-
-    console.log( currentMifosToken() );
+cron.schedule('00 00 * * *', () => {
+    fxUpdateMemoryDB();
 });
 
 
