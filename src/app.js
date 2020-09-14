@@ -31,16 +31,10 @@ fxInicializar();
 fxInitMemoryDB();
 
 
+cron.schedule('* * * * *', () => {
 
-// cron.schedule('5 * * * * *', () => {
-
-//     // db.each("SELECT data FROM mf", function (err, row) {
-//     //     console.log( row.data.expiration);
-//     // });
-//     console.log(Date.now() );
-    
-// });
-
+    console.log( currentMifosToken() );
+});
 
 
 module.exports = app

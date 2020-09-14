@@ -34,7 +34,7 @@ const fxInitMemoryDB = async () => {
 const currentMifosToken =  () =>{
 
     db.each("SELECT data FROM mf", function (err, row) {
-        return row.data;
+        return JSON.parse( row.data );
     });
 
     

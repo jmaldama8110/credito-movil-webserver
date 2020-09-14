@@ -16,7 +16,7 @@ const { cliente } = require('../db/cassandra-db')
 
 const sendWelcomeSMS = require('../sms/sendsms')
 const sendWelcomeWhatsapp = require('../sms/sendwapp');
-const mifosToken = require('../middleware/mifostoken')
+const { currentMifosToken } = require('../middleware/mifostoken')
 const express = require('express');
 const router = new express.Router()
 
@@ -24,7 +24,7 @@ router.get('/usuarios/yo', authcass, async (req, res) => { // GET perfil del usu
 
     const data = mifosToken();
 
-    res.send({usuario:req.user,data});
+    res.send({ usuario: req.user, data });
 })
 
 // CREAR usuario
@@ -57,7 +57,7 @@ router.post('/usuarios', async (req, res) => {
                     }
 
                     await usuarioMapper.insert(usuarioNuevo);
-
+                    const codigoActivacion = usuarioNuevo.toString().substring(0,6);
                     //sendWelcomeSMS(`+52${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
                     sendWelcomeWhatsapp(`+521${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
 
