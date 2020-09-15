@@ -16,7 +16,7 @@ const { cliente } = require('../db/cassandra-db')
 
 const sendWelcomeSMS = require('../sms/sendsms')
 const sendWelcomeWhatsapp = require('../sms/sendwapp');
-const { currentMifosToken } = require('../middleware/mifostoken')
+const { fxGetCurrentToken } = require('../middleware/mifostoken')
 const express = require('express');
 const router = new express.Router()
 
@@ -29,7 +29,8 @@ router.get('/usuarios/yo', authcass, async (req, res) => { // GET perfil del usu
 
 // CREAR usuario
 router.post('/usuarios', async (req, res) => {
-
+    const currentMifosToken = fxGetCurrentToken();
+    console.log(currentMifosToken )
     try {
 
         /// primero, valida que no haya errores en el JSON enviando en la peticion

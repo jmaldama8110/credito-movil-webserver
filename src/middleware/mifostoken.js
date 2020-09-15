@@ -58,8 +58,17 @@ const fxUpdateMemoryDB = async () => {
     })
 }
 
+const fxGetCurrentToken = () =>{    
+
+    db.get("SELECT data FROM mf",(err, row)=>{
+        
+        
+    });
+}
+
 
 module.exports = {
     fxInitMemoryDB,
-    fxUpdateMemoryDB
+    fxUpdateMemoryDB,
+    fxGetCurrentToken
 }
