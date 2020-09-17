@@ -3,12 +3,12 @@ const cron = require('node-cron');
 
 const { cliente } = require('./db/cassandra-db')
 const usuarioRouter = require('./routers/usuario')
-const {fxInitMemoryDB,fxUpdateMemoryDB } = require('./middleware/mifostoken');
+const { fxInitMemoryDB, fxUpdateMemoryDB } = require('./middleware/mifostoken');
 
 const app = express()
 
-app.use(express.json())
-app.use(usuarioRouter)
+app.use(express.json({ limit: '50mb' }));
+app.use(usuarioRouter);
 
 
 const fxInicializar = async () => {

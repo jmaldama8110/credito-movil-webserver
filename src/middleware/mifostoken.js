@@ -37,32 +37,30 @@ const fxInitMemoryDB = async () => {
 const fxUpdateMemoryDB = async () => {
 
     db.get("SELECT data FROM mf", async (err, row) => {
-    console.log('...OK-> Comprobando validez del token actual...')
+        console.log('...OK-> Comprobando validez del token actual...')
         const data = JSON.parse(row.data);
         const fechaInicio = Date.now();
         const fechaFin = data.exp;
-        const duracionToken = diffFechaInicioFin(fechaInicio, fechaFin,'hours');
-        console.log('Tiempo de vida del token generado...',duracionToken);
+        const duracionToken = diffFechaInicioFin(fechaInicio, fechaFin, 'hours');
+        console.log('Tiempo de vida del token generado...', duracionToken);
 
-        if( duracionToken < 0 ){
+        if (duracionToken < 0) {
             const data2 = await fxObtenerTokenMifos();
             const params = [JSON.stringify(data2)];
-            db.run("UPDATE mf SET data=?",params, (error)=>{
-                if( error ){
-                    console.log( error );
+            db.run("UPDATE mf SET data=?", params, (error) => {
+                if (error) {
+                    console.log(error);
                 }
-            })            
+            })
         }
-        
-        
+
+
     })
 }
 
-const fxGetCurrentToken = () =>{    
-
-    db.get("SELECT data FROM mf",(err, row)=>{
-        
-        
+const fxGetCurrentToken =  async (callback) => {
+    db.get("SELECT data FROM mf", (err, row) => {
+        return callback(row.data);
     });
 }
 

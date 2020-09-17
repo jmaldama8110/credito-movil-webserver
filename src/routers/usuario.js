@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
 const sharp = require('sharp');
 
+
 const { usuarioMapper, tokensMapper, credencialesMapper,
     findUsuarioPorAccountNo,
     findUsuarioPorCredenciales,
@@ -22,15 +23,14 @@ const router = new express.Router()
 
 router.get('/usuarios/yo', authcass, async (req, res) => { // GET perfil del usuario
 
-    const data = mifosToken();
-
-    res.send({ usuario: req.user, data });
+    res.send({ usuario: req.user });
 })
 
 // CREAR usuario
+
+
 router.post('/usuarios', async (req, res) => {
-    const currentMifosToken = fxGetCurrentToken();
-    console.log(currentMifosToken )
+
     try {
 
         /// primero, valida que no haya errores en el JSON enviando en la peticion
@@ -43,31 +43,60 @@ router.post('/usuarios', async (req, res) => {
             const usuarioBusqueda = await findUsuarioPorAccountNo(req.body.account_no);
 
             if (!usuarioBusqueda) {
-                try {
-                    const newId = uuidv4();
-                    const token = generarTokenAcceso(req.body.account_no)
+                //Busca cliente por account_no al Fineract
+                fxGetCurrentToken(async (mifosData) => {
+                    /// axios apunta al API de fineract para obtener datos del cliente desde mifos
+                    const data = JSON.parse(mifosData);
+                    axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+                    await axios.get(`https://fincoredemo.dnsalias.net/api/v1/clients?office_id=0&search=${req.body.account_no}`)
+                        .then(async (response) => {
+                            //// si la respuesta contiene el resultado correcto desde Fineract items son todos los elementos devueltos
+                            if (response.data.items.length !== 1) {
+                                throw new Error('Numero de items devueltos por fineract, incorrecto');
+                            }
 
-                    const encodedPass = await bcrypt.hash(req.body.password, 8);
-                    const usuarioNuevo = {
-                        ...req.body,
-                        usuario_id: newId,
-                        password: encodedPass,
-                        creado_el: Date.now(),
-                        tokens: token,
-                        verificado: false
-                    }
+                            try {
+                                const newId = uuidv4();
+                                const token = generarTokenAcceso(req.body.account_no)
 
-                    await usuarioMapper.insert(usuarioNuevo);
-                    const codigoActivacion = newId.toString().substring(0,6);
-                    //sendWelcomeSMS(`+52${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
-                    sendWelcomeWhatsapp(`+521${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
+                                const encodedPass = await bcrypt.hash(req.body.password, 8);
+                                const usuarioNuevo = {
+                                    ...req.body,
+                                    client_id: `${response.data.items[0].id}`,
+                                    apellido_materno: response.data.items[0].middlename,
+                                    apellido_paterno: response.data.items[0].lastname,
+                                    nombre: response.data.items[0].firstname,
+                                    clave_ine: response.data.items[0].elector_key,
+                                    serie_ine: response.data.items[0].elector_vertical_num,
+                                    curp: response.data.items[0].curp,
+                                    fecha_nacimiento: response.data.items[0].date_of_birth,
+                                    usuario_id: newId,
+                                    password: encodedPass,
+                                    creado_el: Date.now(),
+                                    tokens: token,
+                                    verificado: false
+                                }
 
-                    res.status(201).send({ usuarioNuevo, token })
-                }
-                catch (error) {
-                    console.log(error)
-                    res.status(500).send(error);
-                }
+                                await usuarioMapper.insert(usuarioNuevo);
+                                const codigoActivacion = newId.toString().substring(0, 6);
+                                //sendWelcomeSMS(`+52${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
+                                sendWelcomeWhatsapp(`+521${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
+
+                                res.status(201).send({ usuarioNuevo, token })
+                            }
+                            catch (error) {
+                                console.log(error)
+                                res.status(500).send(error);
+                            }
+                            //////////////
+
+                        }).catch((err) => { /// si no encuentra el accont_no en mifos, no permite crear el usuario
+                            console.log(err);
+                            res.status(404).send('No se encontro el account_no = ' + req.body.account_no);
+
+                        })
+                }) // fin de callback -> fxGetCurrentToken
+
             }
             else {
                 res.status(400).send('El account_no ya se encuentra registrado...')
