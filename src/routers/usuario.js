@@ -133,33 +133,33 @@ router.post('/usuarios/login', async (req, res) => { // Enviar peticion Login, g
 
 })
 
-router.get('/usuarios/soycliente', authcass, async (req, res) => {
+// router.get('/usuarios/soycliente', authcass, async (req, res) => {
 
-    //Obtiene el token a emplear en el server
-    await axios.post('https://fincoredemo.dnsalias.net/api/v1/account/login', {
-        username: process.env.MIFOS_USERNAME,
-        password: process.env.MIFOS_PASSWORD
-    }).then(async (respuesta) => {
-        // solamente si el usuario tiene una valor en account_no
-        if (req.user.account_no) {
+//     //Obtiene el token a emplear en el server
+//     await axios.post('https://fincoredemo.dnsalias.net/api/v1/account/login', {
+//         username: process.env.MIFOS_USERNAME,
+//         password: process.env.MIFOS_PASSWORD
+//     }).then(async (respuesta) => {
+//         // solamente si el usuario tiene una valor en account_no
+//         if (req.user.account_no) {
 
-            axios.defaults.headers.common['Authorization'] = `Bearer ${respuesta.data.token}`;
+//             axios.defaults.headers.common['Authorization'] = `Bearer ${respuesta.data.token}`;
 
-            await axios.get('https://fincoredemo.dnsalias.net/api/v1/clients?office_id=0&search=000001100')
-                .then((response) => {
-                    res.send(response.data);
-                }).catch((err) => {
-                    console.log(err);
-                    res.status(404).send();
+//             await axios.get('https://fincoredemo.dnsalias.net/api/v1/clients?office_id=0&search=000001100')
+//                 .then((response) => {
+//                     res.send(response.data);
+//                 }).catch((err) => {
+//                     console.log(err);
+//                     res.status(404).send();
 
-                })
-        }
-        res.status(404).send();
-    }).catch((err) => {
-        res.send(err);
-    })
+//                 })
+//         }
+//         res.status(404).send();
+//     }).catch((err) => {
+//         res.send(err);
+//     })
 
-})
+// })
 
 // Usuario LOGOUT
 router.post('/usuarios/logout', authcass, async (req, res) => {
@@ -224,10 +224,10 @@ router.post('/usuarios/yo/selfi', authcass, upload.single('selfi'), async (req, 
     // req.user.selfi = buffer
     try {
         // Use query markers (?) and parameters
-        const query = 'UPDATE usuario_credenciales set avatar=? WHERE account_no=? ';
+        const query = 'UPDATE usuarios set selfi=? WHERE account_no=? ';
         const cadenaBase64 = buffer.toString('base64');
 
-        const params = [buffer, req.user.accountNo];
+        const params = [cadenaBase64, req.user.accountNo];
 
         // Set the prepare flag in the query options
         await cliente.execute(query, params, { prepare: true });
@@ -247,14 +247,14 @@ router.get('/usuarios/:id/selfi', async (req, res) => {
 
     try {
 
-        const usuario = await credencialesMapper.get({ account_no: req.params.id })
+        const usuario = await usuarioMapper.get({ account_no: req.params.id })
 
-        if (!usuario || !usuario.avatar) {
+        if (!usuario || !usuario.selfi) {
             throw new Error()
         }
 
         res.set('Content-Type', 'image/png') // respues en modo imagen desde el server
-        res.send(usuario.avatar) // send -> campo buffer
+        res.send(usuario.selfi) // send -> campo buffer
 
     } catch (error) {
         res.status(404).send(error)
