@@ -78,9 +78,9 @@ router.post('/usuarios', async (req, res) => {
                                 }
 
                                 await usuarioMapper.insert(usuarioNuevo);
-                                const codigoActivacion = newId.toString().substring(0, 6);
-                                //sendWelcomeSMS(`+52${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
-                                sendWelcomeWhatsapp(`+521${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
+                                // const codigoActivacion = newId.toString().substring(0, 6);
+                                // //sendWelcomeSMS(`+52${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
+                                // sendWelcomeWhatsapp(`+521${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
 
                                 res.status(201).send({ usuarioNuevo, token })
                             }
@@ -111,6 +111,7 @@ router.post('/usuarios', async (req, res) => {
     }
 });
 
+
 //Usuario LOGIN
 router.post('/usuarios/login', async (req, res) => { // Enviar peticion Login, generar un nuevo token
 
@@ -133,33 +134,49 @@ router.post('/usuarios/login', async (req, res) => { // Enviar peticion Login, g
 
 })
 
-// router.get('/usuarios/soycliente', authcass, async (req, res) => {
+router.post('/usuarios/enviarcodigo', authcass, (req, res)  => {
 
-//     //Obtiene el token a emplear en el server
-//     await axios.post('https://fincoredemo.dnsalias.net/api/v1/account/login', {
-//         username: process.env.MIFOS_USERNAME,
-//         password: process.env.MIFOS_PASSWORD
-//     }).then(async (respuesta) => {
-//         // solamente si el usuario tiene una valor en account_no
-//         if (req.user.account_no) {
+    try {
+        const numeroMovil = req.body.numeroMovil;
+        const codigoEnviado = req.user.usuarioId.toString().substring(0, 6); // codigo enviado al telefono del usuario
+        //sendWelcomeSMS(`+52${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
+        sendWelcomeWhatsapp(`+521${numeroMovil}`, `${req.user.nombre} tu codigo es ${codigoEnviado}, expira en 5 minutos`)
 
-//             axios.defaults.headers.common['Authorization'] = `Bearer ${respuesta.data.token}`;
+        res.send('Se ha enviado el codigo al numero:' + numeroMovil);
 
-//             await axios.get('https://fincoredemo.dnsalias.net/api/v1/clients?office_id=0&search=000001100')
-//                 .then((response) => {
-//                     res.send(response.data);
-//                 }).catch((err) => {
-//                     console.log(err);
-//                     res.status(404).send();
+    }
+    catch (error) {
+        res.status(400).send(error);
+    }
+})
 
-//                 })
-//         }
-//         res.status(404).send();
-//     }).catch((err) => {
-//         res.send(err);
-//     })
+router.post('/usuarios/:codigoingresado/verificar/:numeromovil', authcass,async (req, res) => {
+  
+    try {
 
-// })
+        const codigoIngresado = req.params.codigoingresado; // codigo ingresado por el cliente
+        const codigoEnviado = req.user.usuarioId.toString().substring(0, 6); // codigo enviado
+        const movilVerificado = req.params.numeromovil; // numero movil nuevo
+
+        if (codigoIngresado === codigoEnviado) {
+            // Use query markers (?) and parameters
+            const query = 'UPDATE usuarios SET numero_movil=?,verificado=true WHERE account_no=? ';
+            const params = [movilVerificado, req.user.accountNo];
+
+            // Set the prepare flag in the query options
+            await cliente.execute(query, params, { prepare: true });
+            sendWelcomeWhatsapp(`+521${movilVerificado}`, `Felicidades ${req.user.nombre.toString()}, tu registro se ha completado de manera existosa. Agradecemos tu confianza! tus datos personales estan protegidos. Recuerda llamar al 01800 CONSERVA - o si prefieres, escribe "ayuda" en este chat y un ejecutivo se pondra en contacto contigo.. Enhorabuena! `)
+
+            res.send(`Se ha verificado el numero ${movilVerificado}`);
+
+        } else{
+            res.status(404).send('Codigo de activacion no valido...')
+        }
+
+    } catch (error) {
+        res.status(400).send(error);
+    }
+})
 
 // Usuario LOGOUT
 router.post('/usuarios/logout', authcass, async (req, res) => {
@@ -253,8 +270,10 @@ router.get('/usuarios/:id/selfi', async (req, res) => {
             throw new Error()
         }
 
+        const buff = new Buffer.from(usuario.selfi, 'base64');
+
         res.set('Content-Type', 'image/png') // respues en modo imagen desde el server
-        res.send(usuario.selfi) // send -> campo buffer
+        res.send(buff) // send -> campo buffer
 
     } catch (error) {
         res.status(404).send(error)
@@ -419,25 +438,6 @@ module.exports = router;
 //     await req.user.save()
 
 //     res.send()
-// })
-
-// // GET obtener el avatar de cualquier usuario (sin estar logeado)
-// router.get('/users/:id/avatar', async (req, res) => {
-
-//     try {
-//         const user = await User.findById(req.params.id)
-
-//         if (!user || !user.avatar) {
-//             throw new Error()
-//         }
-
-//         res.set('Content-Type', 'image/png') // respues en modo imagen desde el server
-//         res.send(user.avatar) // send -> campo buffer
-
-//     } catch (error) {
-//         res.status(404).send()
-//     }
-
 // })
 
 // const MessagingResponse = require('twilio').twiml.MessagingResponse
