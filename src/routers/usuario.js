@@ -11,7 +11,8 @@ const { usuarioMapper, tokensMapper, credencialesMapper,
     findUsuarioPorAccountNo,
     findUsuarioPorCredenciales,
     generarTokenAcceso,
-    validarUsuarioJson } = require('../model/usuario')
+    validarUsuarioJson,
+    usuarioPublico } = require('../model/usuario')
 
 const { cliente } = require('../db/cassandra-db')
 
@@ -23,12 +24,10 @@ const router = new express.Router()
 
 router.get('/usuarios/yo', authcass, async (req, res) => { // GET perfil del usuario
 
-    res.send({ usuario: req.user });
+    res.send({ usuario: usuarioPublico(req.user) });
 })
 
 // CREAR usuario
-
-
 router.post('/usuarios', async (req, res) => {
 
     try {
@@ -82,7 +81,7 @@ router.post('/usuarios', async (req, res) => {
                                 // //sendWelcomeSMS(`+52${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
                                 // sendWelcomeWhatsapp(`+521${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
 
-                                res.status(201).send({ usuarioNuevo, token })
+                                res.status(201).send({ usuario:usuarioPublico(usuarioNuevo), token })
                             }
                             catch (error) {
                                 console.log(error)
@@ -126,7 +125,7 @@ router.post('/usuarios/login', async (req, res) => { // Enviar peticion Login, g
             creado_el: Date.now()
         });
 
-        res.send({ user: user, token })
+        res.send({ usuario: usuarioPublico(user), token })
 
     } catch (error) {
         res.status(400).send(error)

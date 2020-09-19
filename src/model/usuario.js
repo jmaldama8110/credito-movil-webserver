@@ -135,6 +135,23 @@ const generarTokenAcceso = (id) => {
 
 }
 
+const usuarioPublico = (user) => {
+/// quita toda la información sensible
+    let usuarioPublico = user;
+
+    delete usuarioPublico.password;
+    delete usuarioPublico.usuarioId;
+    delete usuarioPublico.numeroMovil;
+    delete usuarioPublico.curp;
+    delete usuarioPublico.serieIne;
+    delete usuarioPublico.verificado;
+    delete usuarioPublico.claveIne;
+    delete usuarioPublico.selfi;
+    delete usuarioPublico.fechaNacimiento;
+    delete usuarioPublico.clientId;
+
+    return usuarioPublico;
+}
 
 const findUsuarioPorCredenciales = async (accountNo, password) => {
 
@@ -167,5 +184,6 @@ module.exports = {
     findUsuarioPorAccountNo,
     findUsuarioPorCredenciales,
     generarTokenAcceso,
-    validarUsuarioJson
+    validarUsuarioJson,
+    usuarioPublico
 };
