@@ -51,7 +51,12 @@ router.post('/usuarios', async (req, res) => {
                         .then(async (response) => {
                             //// si la respuesta contiene el resultado correcto desde Fineract items son todos los elementos devueltos
                             if (response.data.items.length !== 1) {
-                                throw new Error('Numero de items devueltos por fineract, incorrecto');
+                                throw 'Numero de items devueltos por fineract, incorrecto';
+                            }
+
+                            /// valida curp enviado sea igual al curp buscado
+                            if( response.data.items[0].curp !== req.body.curp ){
+                                throw  'El curp en el body no corresponde al curp registrado...';
                             }
 
                             try {
@@ -91,7 +96,7 @@ router.post('/usuarios', async (req, res) => {
 
                         }).catch((err) => { /// si no encuentra el accont_no en mifos, no permite crear el usuario
                             console.log(err);
-                            res.status(404).send('No se encontro el account_no = ' + req.body.account_no);
+                            res.status(404).send(err);
 
                         })
                 }) // fin de callback -> fxGetCurrentToken
