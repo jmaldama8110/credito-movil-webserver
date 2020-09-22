@@ -4,7 +4,7 @@ const Mapper = cassandra.mapping.Mapper;
 const UnderscoreCqlToCamelCaseMappings = cassandra.mapping.UnderscoreCqlToCamelCaseMappings;
 
 const ruta = require('path');
-const bundleLocation = ruta.join(__dirname,'../bundle/secure-connect-consandra.zip');
+const bundleLocation = ruta.join(__dirname,'../bundle/secure-connect-conserva.zip');
 
 const cliente = new Client({
     cloud: { secureConnectBundle: bundleLocation },
