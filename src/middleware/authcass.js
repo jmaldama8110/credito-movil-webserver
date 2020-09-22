@@ -12,8 +12,8 @@ const authcass = async (req, res, next) => {
         user = await usuarioMapper.get({ account_no:accountNo });
         tokenValido = await tokensMapper.get({ tokens: token,account_no:accountNo})
 
-        if (!(user && tokenValido) ) {
-            throw new Error();
+        if (!( user && tokenValido ) ) {
+            throw 'No esta autenticado...';
         }
         req.currentToken = token;
         req.user = user;
@@ -21,7 +21,7 @@ const authcass = async (req, res, next) => {
 
     }
     catch (error) {
-        res.status(401).send({ error: 'No autenticado...' })
+        res.status(401).send(error)
     }
 
 }

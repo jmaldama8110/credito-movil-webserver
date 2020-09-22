@@ -118,7 +118,6 @@ router.post('/usuarios/login', async (req, res) => { // Enviar peticion Login, g
 
         const user = await findUsuarioPorCredenciales(req.body.account_no, req.body.password)
         const token = generarTokenAcceso(user.accountNo)
-
         await tokensMapper.insert({
             account_no: user.accountNo,
             tokens: token,

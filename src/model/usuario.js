@@ -91,11 +91,11 @@ const validarUsuarioJson = (usuarioRequest) => {
     curp = curp.trim().toUpperCase();
     curpLength = validator.isLength(curp, { min: 18, max: 18 });
     curpAlfanumerico = validator.isAlphanumeric(curp);
-    
-    if(!curpLength)
-        msjErr = [...msjErr,`curp: Debe ser de 18 caracteres...`]
-    if(!curpAlfanumerico)
-        msjErr = [...msjErr,`curp: Debe contener solamente letras mayuscular y numeros...`]
+
+    if (!curpLength)
+        msjErr = [...msjErr, `curp: Debe ser de 18 caracteres...`]
+    if (!curpAlfanumerico)
+        msjErr = [...msjErr, `curp: Debe contener solamente letras mayuscular y numeros...`]
 
     // email
     email = email.trim();
@@ -136,7 +136,7 @@ const generarTokenAcceso = (id) => {
 }
 
 const usuarioPublico = (user) => {
-/// quita toda la información sensible
+    /// quita toda la información sensible
     let usuarioPublico = user;
 
     delete usuarioPublico.password;
@@ -156,13 +156,18 @@ const usuarioPublico = (user) => {
 const findUsuarioPorCredenciales = async (accountNo, password) => {
 
     const usuario = await usuarioMapper.get({ accountNo })
+
     if (!usuario) {
-        throw new Error('No fue posible loguearse...')
+        throw 'Usuario no existente...'
     }
+    if (!(usuario.verificado)) {
+        throw 'Usuario no verificado...'
+    }
+
 
     const isMatch = await bcrypt.compare(password, usuario.password);
     if (!isMatch) {
-        throw new Error('No fue posible loguearse...')
+        throw 'No fue posible loguearse...'
     }
 
     return usuario;
