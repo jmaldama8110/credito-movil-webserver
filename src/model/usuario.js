@@ -160,10 +160,9 @@ const findUsuarioPorCredenciales = async (accountNo, password) => {
     if (!usuario) {
         throw 'Usuario no existente...'
     }
-    if (!(usuario.verificado)) {
-        throw 'Usuario no verificado...'
-    }
-
+    // if (!(usuario.verificado)) {
+    //     throw 'Usuario no verificado...'
+    // }
 
     const isMatch = await bcrypt.compare(password, usuario.password);
     if (!isMatch) {

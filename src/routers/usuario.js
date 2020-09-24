@@ -39,72 +39,64 @@ router.post('/usuarios', async (req, res) => {
         }
         else {
 
-            const usuarioBusqueda = await findUsuarioPorAccountNo(req.body.account_no);
+            //Busca cliente por account_no al Fineract
+            fxGetCurrentToken(async (mifosData) => {
+                /// axios apunta al API de fineract para obtener datos del cliente desde mifos
+                const data = JSON.parse(mifosData);
+                axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+                await axios.get(`https://fincoredemo.dnsalias.net/api/v1/clients?office_id=0&search=${req.body.account_no}`)
+                    .then(async (response) => {
+                        //// si la respuesta contiene el resultado correcto desde Fineract items son todos los elementos devueltos
+                        if (response.data.items.length !== 1) {
+                            throw 'Numero de items devueltos por fineract, incorrecto';
+                        }
 
-            if (!usuarioBusqueda) {
-                //Busca cliente por account_no al Fineract
-                fxGetCurrentToken(async (mifosData) => {
-                    /// axios apunta al API de fineract para obtener datos del cliente desde mifos
-                    const data = JSON.parse(mifosData);
-                    axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-                    await axios.get(`https://fincoredemo.dnsalias.net/api/v1/clients?office_id=0&search=${req.body.account_no}`)
-                        .then(async (response) => {
-                            //// si la respuesta contiene el resultado correcto desde Fineract items son todos los elementos devueltos
-                            if (response.data.items.length !== 1) {
-                                throw 'Numero de items devueltos por fineract, incorrecto';
+                        /// valida curp enviado sea igual al curp buscado
+                        if (response.data.items[0].curp !== req.body.curp) {
+                            throw 'El curp en el body no corresponde al curp registrado...';
+                        }
+
+                        try {
+                            const newId = uuidv4();
+                            const token = generarTokenAcceso(req.body.account_no)
+
+                            const encodedPass = await bcrypt.hash(req.body.password, 8);
+                            const usuarioNuevo = {
+                                ...req.body,
+                                client_id: `${response.data.items[0].id}`,
+                                apellido_materno: response.data.items[0].middlename,
+                                apellido_paterno: response.data.items[0].lastname,
+                                nombre: response.data.items[0].firstname,
+                                clave_ine: response.data.items[0].elector_key,
+                                serie_ine: response.data.items[0].elector_vertical_num,
+                                curp: response.data.items[0].curp,
+                                fecha_nacimiento: response.data.items[0].date_of_birth,
+                                usuario_id: newId,
+                                password: encodedPass,
+                                creado_el: Date.now(),
+                                tokens: token,
+                                verificado: false
                             }
 
-                            /// valida curp enviado sea igual al curp buscado
-                            if( response.data.items[0].curp !== req.body.curp ){
-                                throw  'El curp en el body no corresponde al curp registrado...';
-                            }
+                            await usuarioMapper.insert(usuarioNuevo);
+                            // const codigoActivacion = newId.toString().substring(0, 6);
+                            // //sendWelcomeSMS(`+52${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
+                            // sendWelcomeWhatsapp(`+521${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
 
-                            try {
-                                const newId = uuidv4();
-                                const token = generarTokenAcceso(req.body.account_no)
+                            res.status(201).send({ usuario: usuarioPublico(usuarioNuevo), token })
+                        }
+                        catch (error) {
+                            console.log(error)
+                            res.status(500).send(error);
+                        }
+                        //////////////
 
-                                const encodedPass = await bcrypt.hash(req.body.password, 8);
-                                const usuarioNuevo = {
-                                    ...req.body,
-                                    client_id: `${response.data.items[0].id}`,
-                                    apellido_materno: response.data.items[0].middlename,
-                                    apellido_paterno: response.data.items[0].lastname,
-                                    nombre: response.data.items[0].firstname,
-                                    clave_ine: response.data.items[0].elector_key,
-                                    serie_ine: response.data.items[0].elector_vertical_num,
-                                    curp: response.data.items[0].curp,
-                                    fecha_nacimiento: response.data.items[0].date_of_birth,
-                                    usuario_id: newId,
-                                    password: encodedPass,
-                                    creado_el: Date.now(),
-                                    tokens: token,
-                                    verificado: false
-                                }
+                    }).catch((err) => { /// si no encuentra el accont_no en mifos, no permite crear el usuario
+                        console.log(err);
+                        res.status(404).send(err);
 
-                                await usuarioMapper.insert(usuarioNuevo);
-                                // const codigoActivacion = newId.toString().substring(0, 6);
-                                // //sendWelcomeSMS(`+52${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
-                                // sendWelcomeWhatsapp(`+521${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
-
-                                res.status(201).send({ usuario:usuarioPublico(usuarioNuevo), token })
-                            }
-                            catch (error) {
-                                console.log(error)
-                                res.status(500).send(error);
-                            }
-                            //////////////
-
-                        }).catch((err) => { /// si no encuentra el accont_no en mifos, no permite crear el usuario
-                            console.log(err);
-                            res.status(404).send(err);
-
-                        })
-                }) // fin de callback -> fxGetCurrentToken
-
-            }
-            else {
-                res.status(400).send('El account_no ya se encuentra registrado...')
-            }
+                    })
+            }) // fin de callback -> fxGetCurrentToken
 
         }
 
@@ -137,15 +129,16 @@ router.post('/usuarios/login', async (req, res) => { // Enviar peticion Login, g
 
 })
 
-router.post('/usuarios/enviarcodigo', authcass, (req, res)  => {
+router.post('/usuarios/enviarcodigo', authcass, (req, res) => {
 
     try {
+
         const numeroMovil = req.body.numeroMovil;
         const codigoEnviado = req.user.usuarioId.toString().substring(0, 6); // codigo enviado al telefono del usuario
         //sendWelcomeSMS(`+52${usuarioNuevo.numero_movil}`, `${usuarioNuevo.nombre} tu codigo es ${codigoActivacion}`)
         sendWelcomeWhatsapp(`+521${numeroMovil}`, `${req.user.nombre} tu codigo es ${codigoEnviado}, expira en 5 minutos`)
 
-        res.send('Se ha enviado el codigo al numero:' + numeroMovil);
+        res.status(200).send({ mensaje: `Se ha enviado el codigo al numero:  ${numeroMovil}` });
 
     }
     catch (error) {
@@ -153,8 +146,8 @@ router.post('/usuarios/enviarcodigo', authcass, (req, res)  => {
     }
 })
 
-router.post('/usuarios/:codigoingresado/verificar/:numeromovil', authcass,async (req, res) => {
-  
+router.post('/usuarios/:codigoingresado/verificar/:numeromovil', authcass, async (req, res) => {
+
     try {
 
         const codigoIngresado = req.params.codigoingresado; // codigo ingresado por el cliente
@@ -172,7 +165,7 @@ router.post('/usuarios/:codigoingresado/verificar/:numeromovil', authcass,async 
 
             res.send(`Se ha verificado el numero ${movilVerificado}`);
 
-        } else{
+        } else {
             res.status(404).send('Codigo de activacion no valido...')
         }
 
