@@ -40,6 +40,10 @@ router.post('/usuarios', async (req, res) => {
         }
         else {
 
+            const usuarioExistente = await findUsuarioPorCredenciales(req.body.accountNo, req.body.password);
+            if (usuarioExistente.verificado) {
+                res.status(404).send('Usuario ya ha sido verificado...');
+            }
             //Busca cliente por account_no al Fineract
             fxGetCurrentToken(async (mifosData) => {
                 /// axios apunta al API de fineract para obtener datos del cliente desde mifos
@@ -164,7 +168,7 @@ router.post('/usuarios/:codigoingresado/verificar/:numeromovil', authcass, async
             await cliente.execute(query, params, { prepare: true });
             sendWelcomeWhatsapp(`+521${movilVerificado}`, `Felicidades ${req.user.nombre.toString()}, tu registro se ha completado de manera existosa. Agradecemos tu confianza! tus datos personales estan protegidos. Recuerda llamar al 01800 CONSERVA - o si prefieres, escribe "ayuda" en este chat y un ejecutivo se pondra en contacto contigo.. Enhorabuena! `)
 
-            res.send(`Se ha verificado el numero ${movilVerificado}`);
+            res.send({ mensaje: `Se ha verificado el numero ${movilVerificado}` });
 
         } else {
             res.status(404).send('Codigo de activacion no valido...')
