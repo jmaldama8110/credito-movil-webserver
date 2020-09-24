@@ -1,13 +1,13 @@
 
 // expected output: "05"
 
-for (i = 0; i < 10; ++i) {
-    const rand = Math.trunc(Math.random() * (1000000));
-    const str1 = rand.toString();
+// for (i = 0; i < 10; ++i) {
+//     const rand = Math.trunc(Math.random() * (1000000));
+//     const str1 = rand.toString();
 
-    console.log(str1.padStart(9, '0'));
+//     console.log(str1.padStart(9, '0'));
 
-}
+// }
 
 
 // const fullNumber = '2034399002125581';
@@ -16,3 +16,6 @@ for (i = 0; i < 10; ++i) {
 
 // console.log(maskedNumber);
 // expected output: "************5581"
+
+ 
+ 

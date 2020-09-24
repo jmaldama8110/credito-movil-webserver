@@ -8,7 +8,7 @@ const diffFechaInicioFin = require('../utils/diferenciaFechas');
 const fxObtenerTokenMifos = async () => {
 
     //Obtiene el token a emplear en el server
-    const res = await axios.post('https://fincoredemo.dnsalias.net/api/v1/account/login', {
+    const res = await axios.post(`${process.env.MIFOS_BASEURL}/api/v1/account/login`, {
         username: process.env.MIFOS_USERNAME,
         password: process.env.MIFOS_PASSWORD
     });
@@ -30,7 +30,6 @@ const fxInitMemoryDB = async () => {
         console.log('...OK-> Creando DB SQLite en memoria...')
     });
 
-    //    db.close();
 
 }
 

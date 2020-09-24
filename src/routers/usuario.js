@@ -22,6 +22,7 @@ const { fxGetCurrentToken } = require('../middleware/mifostoken')
 const express = require('express');
 const router = new express.Router()
 
+
 router.get('/usuarios/yo', authcass, async (req, res) => { // GET perfil del usuario
 
     res.send({ usuario: usuarioPublico(req.user) });
@@ -44,7 +45,7 @@ router.post('/usuarios', async (req, res) => {
                 /// axios apunta al API de fineract para obtener datos del cliente desde mifos
                 const data = JSON.parse(mifosData);
                 axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-                await axios.get(`https://fincoredemo.dnsalias.net/api/v1/clients?office_id=0&search=${req.body.account_no}`)
+                await axios.get(`${process.env.MIFOS_BASEURL}/api/v1/clients?office_id=0&search=${req.body.account_no}`)
                     .then(async (response) => {
                         //// si la respuesta contiene el resultado correcto desde Fineract items son todos los elementos devueltos
                         if (response.data.items.length !== 1) {
