@@ -40,15 +40,18 @@ router.post('/usuarios', async (req, res) => {
         }
         else {
 
-            const usuarioExistente = await findUsuarioPorCredenciales(req.body.accountNo, req.body.password);
-            if (usuarioExistente.verificado) {
+            const usuarioExistente = await findUsuarioPorAccountNo(req.body.account_no);
+            if (usuarioExistente && usuarioExistente.verificado) {
                 res.status(404).send('Usuario ya ha sido verificado...');
+                return;
             }
             //Busca cliente por account_no al Fineract
             fxGetCurrentToken(async (mifosData) => {
                 /// axios apunta al API de fineract para obtener datos del cliente desde mifos
                 const data = JSON.parse(mifosData);
+
                 axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+
                 await axios.get(`${process.env.MIFOS_BASEURL}/api/v1/clients?office_id=0&search=${req.body.account_no}`)
                     .then(async (response) => {
                         //// si la respuesta contiene el resultado correcto desde Fineract items son todos los elementos devueltos
@@ -79,8 +82,7 @@ router.post('/usuarios', async (req, res) => {
                                 usuario_id: newId,
                                 password: encodedPass,
                                 creado_el: Date.now(),
-                                tokens: token,
-                                verificado: false
+                                tokens: token
                             }
 
                             await usuarioMapper.insert(usuarioNuevo);
