@@ -33,6 +33,11 @@ const mapper = new Mapper(cliente, {
             tables:
                 ['usuario_tokens'],
             keyspace: process.env.DATASTAX_KEYSPACE
+        },
+        'Prestamos': {
+            tables:
+                ['prestamos_cliente','prestamo_planpagos'],
+            keyspace: process.env.DATASTAX_KEYSPACE
         }
     }
 });

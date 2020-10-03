@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const validator = require('validator');
 
 
+
 const usuarioMapper = mapper.forModel('Usuario');
 const tokensMapper = mapper.forModel('Tokens');
 const credencialesMapper = mapper.forModel('Credenciales');

@@ -23,6 +23,7 @@ const express = require('express');
 const router = new express.Router()
 
 
+
 router.get('/usuarios/yo', authcass, async (req, res) => { // GET perfil del usuario
 
     res.send({ usuario: usuarioPublico(req.user) });
