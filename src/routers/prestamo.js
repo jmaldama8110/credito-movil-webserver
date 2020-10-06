@@ -6,9 +6,9 @@ const axios = require('axios');
 const authcass = require('../middleware/authcass');
 const { fxGetCurrentToken } = require('../middleware/mifostoken');
 
+const { prestamoMapper, planpagosMapper } = require('../model/prestamo')
 
 router.get('/dashboard', authcass, async (req, res) => {
-
 
     const data = {
         prestamos: [
@@ -38,7 +38,7 @@ router.get('/dashboard', authcass, async (req, res) => {
             { tipo: 'PAYMENT', mensaje: 'Pago aplicado, gracias', importe: 1550.0, fecha_mov: '2020-09-01', visto: true },
             { tipo: 'LOANAPR', mensaje: 'Felicidades, CREDITO aprobado', importe: 35000.0, fecha_mov: '2020-09-01', visto: true },
             { tipo: 'SAVDEP', mensaje: 'Hemos recibido tu pago', importe: 3500.0, fecha_mov: '2020-09-01', visto: true },
-            { tipo: 'LOANSUB', mensaje: 'Tu solicitud ha sido enviada', importe: 35000.0, fecha_mov: '2020-09-01', visto: true },
+            { tipo: 'LOANAPP', mensaje: 'Tu solicitud ha sido enviada', importe: 35000.0, fecha_mov: '2020-09-01', visto: true },
         ]
     };
 
@@ -47,12 +47,14 @@ router.get('/dashboard', authcass, async (req, res) => {
 
 });
 
-router.get('/prestamo/:id', authcass, async (req, res) => {
+router.get('/prestamo/:id/detalle', authcass, async (req, res) => {
 
     const loanId = req.params.id;
 
     const data = {
         detalle: {
+            prestamo_id: loanId,
+            account_no: '000000083987',
             nombre_producto: 'CREDITO SOLIDARIO',
             monto_original: 35000,
             fecha_desembolso: '2020-09-12',
@@ -60,13 +62,23 @@ router.get('/prestamo/:id', authcass, async (req, res) => {
             fecha_vencimiento: '2021-04-12',
             atrasado: false,
             saldo_vencido: 1550.0,
+            saldo_total: 22450,
             monto_proximo_pago: 1550.0,
             fecha_proximo_pago: '2020-11-21'
-   },
+        }
+    }
+
+    res.send(data);
+});
+
+router.get('/prestamo/:id/movimientos', authcass, async (req, res) => {
+
+    const data = {
         movs: [
-            { tipo: 'LOANAPR', mensaje: 'Felicidades, CREDITO aprobado', importe: 35000.0, fecha_mov: '2020-09-01', visto: true },
-            { tipo: 'SAVDEP', mensaje: 'Hemos recibido tu pago', importe: 3500.0, fecha_mov: '2020-09-01', visto: true },
-            { tipo: 'LOANSUB', mensaje: 'Tu solicitud ha sido enviada', importe: 35000.0, fecha_mov: '2020-09-01', visto: true }
+            { tipo: 'LOANAPR', tipo_nom: 'CREDITO Aprobado', mensaje: 'Felicidades, CREDITO aprobado', importe: 35000.0, fecha_mov: '2020-09-01', referencia: '009783227837823' },
+            { tipo: 'SAVDEP', tipo_nom: 'Deposito de Garantia', mensaje: 'Pago de garantia', importe: 3500.0, fecha_mov: '2020-09-01', referencia: '009783227837823' },
+            { tipo: 'LOANREP', tipo_nom: 'Pago referenciado', mensaje: 'Reembolso del credito aplicado', importe: 3500.0, fecha_mov: '2020-09-01', referencia: '009783227837823' },
+            { tipo: 'LOANSUB', tipo_nom: 'CREDITO en Tramite', mensaje: 'Tu solicitud ha sido enviada', importe: 35000.0, fecha_mov: '2020-09-01', referencia: '009783227837823' }
         ]
 
     }
@@ -76,7 +88,8 @@ router.get('/prestamo/:id', authcass, async (req, res) => {
 
 
 
-router.get('/prestamosd49j843', authcass, async (req, res) => {
+
+router.get('/prestamos', authcass, async (req, res) => {
 
     fxGetCurrentToken(async (mifosData) => {
 
@@ -170,7 +183,7 @@ router.get('/prestamosd49j843', authcass, async (req, res) => {
 
 })
 
-router.get('/planpagosd3434d343d34d', authcass, async (req, res) => {
+router.get('/planpagos', authcass, async (req, res) => {
 
     fxGetCurrentToken(async (mifosData) => {
 
@@ -182,19 +195,59 @@ router.get('/planpagosd3434d343d34d', authcass, async (req, res) => {
         const nitems = respuesta.data.items.length;
         if (nitems > 0) { // si encuentra prestamos registrados
 
-
             for (i = 0; i < nitems; i++) {
+
                 const activo = respuesta.data.items[i].status.active;
+                const loanId = respuesta.data.items[i].id;
+
                 if (activo) {
-                    const loanId = respuesta.data.items[i].id;
-                    console.log(`${loanId}, ${respuesta.data.items[i].loanProductName}`);
 
                     const loanSchedData = await axios.get(`${process.env.MIFOS_BASEURL}/api/v1/loanrepaymentschedule/${loanId}`);
-                    console.log(loanSchedData.data.repaymentSchedule.periods[1].principalDue);
+                    const nPagosPlan = loanSchedData.data.repaymentSchedule.periods.length;
+                    const cuota = loanSchedData.data.repaymentSchedule.periods[1].totalOriginalDueForPeriod;
+
+                    for (j = 0; j < nPagosPlan; j++) {
+
+                        const fechaPago = `${loanSchedData.data.repaymentSchedule.periods[j].dueDate[0]}-${loanSchedData.data.repaymentSchedule.periods[j].dueDate[1]}-${loanSchedData.data.repaymentSchedule.periods[j].dueDate[2]}`
+                        const planpagoData = {
+                            account_no: req.user.accountNo,
+                            prestamo_id: loanId.toString(),
+                            periodo: loanSchedData.data.repaymentSchedule.periods[j].period.toString(),
+                            pagado: loanSchedData.data.repaymentSchedule.periods[j].complete,
+                            capital: loanSchedData.data.repaymentSchedule.periods[j].principalOriginalDue,
+                            interes: loanSchedData.data.repaymentSchedule.periods[j].interestOriginalDue,
+                            iva: loanSchedData.data.repaymentSchedule.periods[j].taxOnInterestDue,
+                            importe: loanSchedData.data.repaymentSchedule.periods[j].totalOriginalDueForPeriod,
+                            saldo_pendiente: loanSchedData.data.repaymentSchedule.periods[j].principalLoanBalanceOutstanding,
+                            fecha: fechaPago
+                        }
+
+                        await planpagosMapper.insert(planpagoData)
+
+                    }
+
+                    let fechaVencidoDesde = respuesta.data.items[i].summary.overdueSinceDate;
+                    if (fechaVencidoDesde)
+                        fechaVencidoDesde = `${respuesta.data.items[i].summary.overdueSinceDate[0]}-${respuesta.data.items[i].summary.overdueSinceDate[1]}-${respuesta.data.items[i].summary.overdueSinceDate[2]}`;
+
+                    const prestamoData = {
+                        account_no: respuesta.data.items[i].accountNo,
+                        prestamo_id: loanId.toString(),
+                        cuota,
+                        monto_original: respuesta.data.items[i].summary.principalDisbursed,
+                        nombre_producto: respuesta.data.items[i].loanProductName,
+                        plazo: respuesta.data.items[i].numberOfRepayments,
+                        saldo_total: respuesta.data.items[i].summary.principalOutstanding,
+                        tipo_plazo: respuesta.data.items[i].repaymentFrequencyType.value,
+                        vencido_desde: fechaVencidoDesde
+                    }
+                    await prestamoMapper.insert(prestamoData);
+
 
                 }
 
             }
+
 
             res.send('Se ha generado el arreglo...')
 
