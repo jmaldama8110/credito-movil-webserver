@@ -2,3 +2,6 @@ node_modules/
 src/playground/
 config/
 src/test.js
+src/planpagos.js
+src/prestamos_lista.js
+

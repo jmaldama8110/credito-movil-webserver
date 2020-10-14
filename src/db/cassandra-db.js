@@ -4,7 +4,7 @@ const Mapper = cassandra.mapping.Mapper;
 const UnderscoreCqlToCamelCaseMappings = cassandra.mapping.UnderscoreCqlToCamelCaseMappings;
 
 const ruta = require('path');
-const bundleLocation = ruta.join(__dirname,'../bundle/secure-connect-conserva.zip');
+const bundleLocation = ruta.join(__dirname, '../bundle/secure-connect-conserva.zip');
 
 const cliente = new Client({
     cloud: { secureConnectBundle: bundleLocation },
@@ -16,13 +16,13 @@ const mapper = new Mapper(cliente, {
     models: {
         'Usuario': {
             tables:
-                ['usuarios','usuario_credenciales','usuario_tokens'],
+                ['usuarios', 'usuario_credenciales', 'usuario_tokens'],
             keyspace: process.env.DATASTAX_KEYSPACE,
             columns: {
                 'account_no': 'accountNo',
                 'tokens': 'token'
-              },
-              mappings: new UnderscoreCqlToCamelCaseMappings()
+            },
+            mappings: new UnderscoreCqlToCamelCaseMappings()
         },
         'Credenciales': {
             tables:
@@ -43,6 +43,11 @@ const mapper = new Mapper(cliente, {
             tables:
                 ['prestamo_planpagos'],
             keyspace: process.env.DATASTAX_KEYSPACE
+        },
+        'Movimientos': {
+            tables:
+                ['cliente_movs'],
+                keyspace: process.env.DATASTAX_KEYSPACE
         }
 
     }
