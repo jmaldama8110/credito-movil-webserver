@@ -45,13 +45,17 @@ router.get('/prestamo/:id/detalle', authcass, async (req, res) => {
 router.get('/prestamo/:id/movimientos', authcass, async (req, res) => {
 
     const loanId = req.params.id;
-    const movs = await clienteMovs.find({account_no: req.user.accountNo});
+    const movs = await clienteMovs.find({account_no: req.user.accountNo,prestamo_id:loanId});
 
     const data = {
         movs: movs._rs.rows
     }
+    if( movs._rs.rows.length > 0){
+        res.send(data);
+    } else {
+        res.status(404).send('No encontrado...')
+    }
 
-    res.send(data);
 });
 
 
