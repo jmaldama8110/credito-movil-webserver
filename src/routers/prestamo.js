@@ -11,6 +11,7 @@ const { prestamoMapper, planpagosMapper, clienteMovs } = require('../model/prest
 
 router.get('/dashboard', authcass, async (req, res) => {
 
+    clientDataRefresh();
 
     const loans = await prestamoMapper.find({ account_no: req.user.accountNo });
     const movs = await clienteMovs.find({account_no: req.user.accountNo});
@@ -57,9 +58,9 @@ router.get('/prestamo/:id/movimientos', authcass, async (req, res) => {
     }
 
 });
+    
 
-
-router.get('/planpagos', authcass, async (req, res) => {
+router.get('/syncloandata', authcass, async (req, res) => {
 
     fxGetCurrentToken(async (mifosData) => {
 
