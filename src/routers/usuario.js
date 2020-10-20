@@ -218,7 +218,6 @@ router.post('/usuarios/logoutall', authcass, async (req, res) => {
 
 })
 
-
 const upload = multer({
     //dest: 'avatars', commentado para evitar que envie el archivo sea enviado a la carpeta fisica del server
     limits: {
@@ -262,6 +261,8 @@ router.post('/usuarios/yo/selfi', authcass, upload.single('selfi'), async (req, 
 }, (error, req, res, next) => {  // handle error while loading upload
     res.status(400).send({ error: error.message })
 })
+
+
 
 // GET obtener el avatar de cualquier usuario (sin estar logeado)
 router.get('/usuarios/:id/selfi', async (req, res) => {

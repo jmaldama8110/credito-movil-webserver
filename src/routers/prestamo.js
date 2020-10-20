@@ -11,10 +11,9 @@ const { prestamoMapper, planpagosMapper, clienteMovs } = require('../model/prest
 
 router.get('/dashboard', authcass, async (req, res) => {
 
-    clientDataRefresh();
 
     const loans = await prestamoMapper.find({ account_no: req.user.accountNo });
-    const movs = await clienteMovs.find({account_no: req.user.accountNo});
+    const movs = await clienteMovs.find({ account_no: req.user.accountNo });
 
     const data = {
         prestamos: loans._rs.rows,
@@ -46,19 +45,47 @@ router.get('/prestamo/:id/detalle', authcass, async (req, res) => {
 router.get('/prestamo/:id/movimientos', authcass, async (req, res) => {
 
     const loanId = req.params.id;
-    const movs = await clienteMovs.find({account_no: req.user.accountNo,prestamo_id:loanId});
+    const movs = await clienteMovs.find({ account_no: req.user.accountNo, prestamo_id: loanId });
 
     const data = {
         movs: movs._rs.rows
     }
-    if( movs._rs.rows.length > 0){
+    if (movs._rs.rows.length > 0) {
         res.send(data);
     } else {
         res.status(404).send('No encontrado...')
     }
 
 });
-    
+
+router.get('/prestamo/:id/calendario', authcass, async (req, res) => {
+
+    const loanAccountNo = req.params.id;
+    const planpagos = await planpagosMapper.find({ account_no: loanAccountNo });
+
+    res.send(planpagos._rs.rows);
+
+})
+
+
+router.get('/usuarios/referenciaspago', authcass, async (req, res) => {
+
+    fxGetCurrentToken( async(mifosData) =>{
+
+        const data = JSON.parse(mifosData);
+
+        axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+        respuesta = await axios.get(`${process.env.MIFOS_BASEURL}/api/v1/intermediaries?no_cuenta_cliente=${req.user.accountNo}`);
+        
+        res.send(respuesta.data);
+
+    }).catch( (e)=>{
+        res.status(401).send(e);
+    })
+
+})
+
+
 
 router.get('/syncloandata', authcass, async (req, res) => {
 
