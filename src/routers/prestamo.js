@@ -50,18 +50,15 @@ router.get('/prestamo/:id/movimientos', authcass, async (req, res) => {
     const data = {
         movs: movs._rs.rows
     }
-    if (movs._rs.rows.length > 0) {
-        res.send(data);
-    } else {
-        res.status(404).send('No encontrado...')
-    }
+    
+    res.send(data);
 
 });
 
 router.get('/prestamo/:id/calendario', authcass, async (req, res) => {
 
-    const loanAccountNo = req.params.id;
-    const planpagos = await planpagosMapper.find({ account_no: loanAccountNo });
+    const loanId = req.params.id;
+    const planpagos = await planpagosMapper.find({ account_no: req.user.accountNo, prestamo_id: loanId });
 
     res.send(planpagos._rs.rows);
 
@@ -70,16 +67,16 @@ router.get('/prestamo/:id/calendario', authcass, async (req, res) => {
 
 router.get('/usuarios/referenciaspago', authcass, async (req, res) => {
 
-    fxGetCurrentToken( async(mifosData) =>{
+    fxGetCurrentToken(async (mifosData) => {
 
         const data = JSON.parse(mifosData);
 
         axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
         respuesta = await axios.get(`${process.env.MIFOS_BASEURL}/api/v1/intermediaries?no_cuenta_cliente=${req.user.accountNo}`);
-        
+
         res.send(respuesta.data);
 
-    }).catch( (e)=>{
+    }).catch((e) => {
         res.status(401).send(e);
     })
 
@@ -151,7 +148,7 @@ router.get('/syncloandata', authcass, async (req, res) => {
                         prestamo_id: loanId.toString(),
                         orden: 200,
                         importe: respuesta.data.items[i].summary.principalDisbursed,
-                        mensaje: 'Felicidaes tu crédito ha sido entregado! es importante que mantengas un historial limpio',
+                        mensaje: 'Felicidades tu crédito ha sido entregado! es importante que mantengas un historial limpio',
                         referencia: '',
                         tipo: 'LOANDIS',
                         tipo_nom: 'CREDITO Entregado'
@@ -165,9 +162,9 @@ router.get('/syncloandata', authcass, async (req, res) => {
 
                         const fechaPago = `${loanSchedData.data.repaymentSchedule.periods[j].dueDate[0]}-${loanSchedData.data.repaymentSchedule.periods[j].dueDate[1]}-${loanSchedData.data.repaymentSchedule.periods[j].dueDate[2]}`;
                         const planpagoData = {
-                            account_no: respuesta.data.items[i].accountNo,
+                            account_no: req.user.accountNo,
                             prestamo_id: loanId.toString(),
-                            periodo: loanSchedData.data.repaymentSchedule.periods[j].period.toString(),
+                            periodo: loanSchedData.data.repaymentSchedule.periods[j].period,
                             pagado: loanSchedData.data.repaymentSchedule.periods[j].complete,
                             capital: loanSchedData.data.repaymentSchedule.periods[j].principalOriginalDue,
                             interes: loanSchedData.data.repaymentSchedule.periods[j].interestOriginalDue,

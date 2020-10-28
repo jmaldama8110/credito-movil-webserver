@@ -218,6 +218,20 @@ router.post('/usuarios/logoutall', authcass, async (req, res) => {
 
 })
 
+/// TAREAS 27-OCT 2020
+/*
+1. Peticion permite tener acceso a calendario de otros clientes
+2. Ruta "usuarios/cambiarpassword" recibe { viejo_password, nuevo_password} - cambiar cuando estas logueado en la Aplicacion
+3. Ruta "usuarios/recuperarpassword" { account_no } - solicitar cambiar password cuando olvidaste tu password y no estas logueado
+4. Ruta "usuarios/confirmarpassword" { codigo, curp, nuevo_password } - 
+*/
+
+
+router.post('/usuarios/cambiarpassword', authcass, async (req, res) => {
+
+
+});
+
 const upload = multer({
     //dest: 'avatars', commentado para evitar que envie el archivo sea enviado a la carpeta fisica del server
     limits: {
