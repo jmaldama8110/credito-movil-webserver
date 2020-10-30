@@ -50,7 +50,7 @@ router.get('/prestamo/:id/movimientos', authcass, async (req, res) => {
     const data = {
         movs: movs._rs.rows
     }
-    
+
     res.send(data);
 
 });
@@ -80,10 +80,11 @@ router.get('/usuarios/referenciaspago', authcass, async (req, res) => {
         res.status(401).send(e);
     })
 
-})
+});
 
 
-router.get('usuarios/syncloandata', authcass, async (req, res) => {
+
+router.get('/usuarios/syncloandata', authcass, async (req, res) => {
 
     fxGetCurrentToken(async (mifosData) => {
 
