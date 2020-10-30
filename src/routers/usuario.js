@@ -270,7 +270,7 @@ router.post('/usuarios/cambiarpassword', authcass, async (req, res) => {
     }
 });
 
-router.get('/usuarios/recuperaracceso', async (req, res) => {
+router.post('/usuarios/recuperaracceso', async (req, res) => {
 
     const accountNo = req.body.account_no;    
     if ( accountNo ) { //Si el campo de account_no es valido en el body del JSON
