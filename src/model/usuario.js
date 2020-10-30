@@ -159,19 +159,23 @@ const findUsuarioPorCredenciales = async (accountNo, password) => {
     const usuario = await usuarioMapper.get({ accountNo })
 
     if (!usuario) {
-        throw 'Usuario no existente...'
+        throw '1) No fue posible loguearse...'
     }
-    // if (!(usuario.verificado)) {
-    //     throw 'Usuario no verificado...'
-    // }
 
     const isMatch = await bcrypt.compare(password, usuario.password);
     if (!isMatch) {
-        throw 'No fue posible loguearse...'
+        throw '2) No fue posible loguearse...'
     }
 
     return usuario;
 }
+
+const isValidPassword = async (givenPassword, currentPassword) => {
+
+    const isMatch = await bcrypt.compare( givenPassword, currentPassword );
+    return isMatch;
+}
+
 
 const findUsuarioPorAccountNo = async (account_no) => {
 
@@ -190,5 +194,6 @@ module.exports = {
     findUsuarioPorCredenciales,
     generarTokenAcceso,
     validarUsuarioJson,
+    isValidPassword,
     usuarioPublico
 };

@@ -83,8 +83,7 @@ router.get('/usuarios/referenciaspago', authcass, async (req, res) => {
 })
 
 
-
-router.get('/syncloandata', authcass, async (req, res) => {
+router.get('usuarios/syncloandata', authcass, async (req, res) => {
 
     fxGetCurrentToken(async (mifosData) => {
 

@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs')
 const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
 const sharp = require('sharp');
+const validator = require('validator');
 
 
 const { usuarioMapper, tokensMapper, credencialesMapper,
@@ -12,6 +13,7 @@ const { usuarioMapper, tokensMapper, credencialesMapper,
     findUsuarioPorCredenciales,
     generarTokenAcceso,
     validarUsuarioJson,
+    isValidPassword,
     usuarioPublico } = require('../model/usuario')
 
 const { cliente } = require('../db/cassandra-db')
@@ -119,6 +121,8 @@ router.post('/usuarios', async (req, res) => {
 //Usuario LOGIN
 router.post('/usuarios/login', async (req, res) => { // Enviar peticion Login, generar un nuevo token
 
+
+
     try {
 
         const user = await findUsuarioPorCredenciales(req.body.account_no, req.body.password)
@@ -169,7 +173,9 @@ router.post('/usuarios/:codigoingresado/verificar/:numeromovil', authcass, async
 
             // Set the prepare flag in the query options
             await cliente.execute(query, params, { prepare: true });
-            sendWelcomeWhatsapp(`+521${movilVerificado}`, `Felicidades ${req.user.nombre.toString()}, tu registro se ha completado de manera existosa. Agradecemos tu confianza! tus datos personales estan protegidos. Recuerda llamar al 01800 CONSERVA - o si prefieres, escribe "ayuda" en este chat y un ejecutivo se pondra en contacto contigo.. Enhorabuena! `)
+            sendWelcomeWhatsapp(`+521${movilVerificado}`, `Felicidades ${req.user.nombre.toString()}, tu registro se ha completado de manera existosa. 
+                                    Agradecemos tu confianza! tus datos personales estan protegidos. Recuerda llamar al 01800 CONSERVA - o si prefieres, escribe "ayuda"
+                                     en este chat y un ejecutivo se pondra en contacto contigo.. Enhorabuena! `)
 
             res.send({ mensaje: `Se ha verificado el numero ${movilVerificado}` });
 
@@ -220,14 +226,130 @@ router.post('/usuarios/logoutall', authcass, async (req, res) => {
 
 /// TAREAS 27-OCT 2020
 /*
-1. Peticion permite tener acceso a calendario de otros clientes
-2. Ruta "usuarios/cambiarpassword" recibe { viejo_password, nuevo_password} - cambiar cuando estas logueado en la Aplicacion
-3. Ruta "usuarios/recuperarpassword" { account_no } - solicitar cambiar password cuando olvidaste tu password y no estas logueado
+3. Ruta "usuarios/recuperaracceso" { account_no } - solicitar cambiar password cuando olvidaste tu password y no estas logueado
 4. Ruta "usuarios/confirmarpassword" { codigo, curp, nuevo_password } - 
 */
 
-
 router.post('/usuarios/cambiarpassword', authcass, async (req, res) => {
+
+    const passActual = req.user.password;
+    const passIngresado = req.body.viejo_password
+    const passNuevo = req.body.nuevo_password;
+
+    if ((!passIngresado) || (!passNuevo)) {
+        res.status(400).send();
+    }
+    else {
+
+        const isValido = await isValidPassword(passIngresado, passActual);
+
+        if (isValido) {
+
+            // Eliminar todos los tokens registrado con la contraseña anterior
+            const query = 'DELETE FROM usuario_tokens WHERE account_no=? ';
+            const params = [req.user.accountNo];
+
+            await cliente.execute(query, params, { prepare: true });
+            ///////
+
+            /// Actualiza el password nuevo encriptado
+            const encodedPass = await bcrypt.hash(passNuevo, 8);
+            const query2 = 'UPDATE usuarios SET password=? WHERE account_no=?';
+            const params2 = [encodedPass, req.user.accountNo];
+            await cliente.execute(query2, params2, { prepare: true })
+            ///////////
+
+            res.status(200).send();
+
+        }
+        else {
+            res.status(404).send();
+        }
+
+
+    }
+});
+
+router.get('/usuarios/recuperaracceso', async (req, res) => {
+
+    const accountNo = req.body.account_no;    
+    if ( accountNo ) { //Si el campo de account_no es valido en el body del JSON
+
+        const Usuario = await findUsuarioPorAccountNo( accountNo );
+
+        if( Usuario && Usuario.verificado ){
+
+            const NumeroMovil = Usuario.numeroMovil;
+            const Nombre = Usuario.nombre;
+            const codigoEnviado = Usuario.usuarioId.toString().substring(24, 30); 
+    
+            sendWelcomeWhatsapp(`+521${NumeroMovil}`, `${Nombre} recupera tu acceso con este codigo: ${codigoEnviado}, expira en 5 minutos`);
+            //sendWelcomeSMS(`+52${NumeroMovil}`, `${Nombre} tu codigo es ${codigoEnviado}`)
+
+            res.send();
+        }
+        else {
+            res.status(400).send('1) No se pudo solicitar acceso')
+        }
+
+    }
+    else {
+        res.status(400).send('2) No se pudo solicitar acceso');
+    }
+
+});
+
+router.post('/usuarios/confirmaracceso', async (req, res)=>{
+
+    const accountNo = req.body.account_no;
+    const curp = req.body.curp;
+    const codigoIngresado = req.body.codigo;
+    const nuevoPassword = req.body.nuevo_password;
+
+    if( ! (curp && codigoIngresado && nuevoPassword && accountNo)  ){ /// si los campos del body son validos!
+        res.status(400).send();
+    }
+    else {
+
+        const Usuario = await findUsuarioPorAccountNo( accountNo );
+
+        if( Usuario ){ // si encontro el usuario
+
+            const codigoEnviado = Usuario.usuarioId.toString().substring(24, 30); 
+            
+            if( ( Usuario.curp !== curp ) || ( codigoEnviado !== codigoIngresado ) ){ // valida la curp y el codigo enviado correspondan al usuario encontrado
+                res.status(400).send();
+            } 
+            else{
+                /// aqui ya todo esta OK para actualizar el nuevo password
+
+                // Eliminar todos los tokens registrado con la contraseña anterior
+                const query = 'DELETE FROM usuario_tokens WHERE account_no=? ';
+                const params = [accountNo];
+
+                await cliente.execute(query, params, { prepare: true });
+                /////
+
+                /// Actualiza el password nuevo encriptado
+                const encodedPass = await bcrypt.hash(nuevoPassword, 8);
+                const query2 = 'UPDATE usuarios SET password=? WHERE account_no=?';
+                const params2 = [encodedPass, accountNo];
+                await cliente.execute(query2, params2, { prepare: true })
+                ///////////
+
+
+                res.send();
+            }
+
+
+        }
+        else {
+
+            res.status(400).send();
+        }
+
+        res.send();
+    }
 
 
 });
@@ -301,180 +423,3 @@ router.get('/usuarios/:id/selfi', async (req, res) => {
 })
 
 module.exports = router;
-
-// const multer = require('multer') // parar cargar imagenes
-// const sharp = require('sharp')
-
-// const { sendWelcomeEmail, sendGoodbyEmail } = require('../emails/account')
-// const sendWelcomeSMS = require('../sms/sendsms')
-
-// router.get('/users/me', auth, async (req, res) => { // GET perfil del usuario
-//     res.send(req.user)
-
-// })
-// router.patch('/users/me', auth, async (req, res) => { // PATCH (actualiza) usuario
-//     const actualizaciones = Object.keys(req.body)
-//     const camposPermitidos = ['name', 'email', 'password', 'age', 'phone']
-//     if (!isComparaArreglosJSON(actualizaciones, camposPermitidos)) {
-//         return res.status(400).send({ error: 'JSON incluye campos no validos...' })
-//     }
-//     try {
-//         actualizaciones.forEach((valor) => req.user[valor] = req.body[valor])
-//         await req.user.save()
-//         res.status(200).send(req.user)
-//     }
-//     catch (e) {
-//         res.status(400).send(e)
-//     }
-// })
-
-// router.delete('/users/me', auth, async (req, res) => { // elimina mi usuario (quien esta logeado)
-
-//     try {
-
-//         await req.user.remove()
-
-//         sendGoodbyEmail(req.user.email, req.user.name)
-
-//         return res.send(req.user)
-
-//     } catch (e) {
-//         res.status(400).send(e)
-//     }
-
-// })
-
-// router.post('/users', async (req, res) => { // crea un nuevo usuario
-
-//     const user = new User(req.body)
-
-//     try {
-
-//         const token = await user.generateAuthToken()
-
-//         await user.save()
-//         sendWelcomeEmail(user.email, user.name)
-
-//         if (user.phone) {
-//             const phone = '+521' + user.phone // only MEX numubers
-//             const body = `${user.name} bienvenido a Taskman!`
-//             sendWelcomeSMS(phone, body)
-//         }
-
-//         res.status(201).send({ user, token })
-//     }
-//     catch (err) {
-//         res.status(400).send(err)
-//     }
-
-// })
-
-// router.post('/users/login', async (req, res) => { // Enviar peticion Login, generar un nuevo token
-
-//     try {
-
-//         const user = await User.findUserByCredentials(req.body.email, req.body.password)
-
-//         const token = await user.generateAuthToken()
-
-//         res.send({ user: user, token })
-
-//     } catch (error) {
-//         res.status(400).send(error)
-//     }
-
-// })
-
-// router.post('/users/logout', auth, async (req, res) => { // Enviar peticion de Logout, elimina el token actual
-
-//     try {
-//         req.user.tokens = req.user.tokens.filter((token) => {
-//             return token.token !== req.currentToken
-//         })
-
-//         await req.user.save()
-//         res.send()
-
-//     } catch (error) {
-//         res.status(500).send()
-//     }
-
-// })
-
-// router.post('/users/logoutall', auth, async (req, res) => { // Envia peticion de Logout de todos los tokens generados, elimina todos los tokens
-
-//     try {
-
-//         req.user.tokens = []
-//         await req.user.save()
-//         res.send()
-
-//     } catch (error) {
-//         res.status(500).send()
-//     }
-
-// })
-
-
-// const upload = multer({
-//     //dest: 'avatars', commentado para evitar que envie el archivo sea enviado a la carpeta avatars
-//     limits: {
-//         fileSize: 1000000 // 1,0 megabytes
-//     },
-//     fileFilter(req, file, cb) { // cb -> callback function
-
-//         if (!file.originalname.match(/\.(png|jpg|jpeg)$/)) { // Expresion regular-> checar regex101.com
-//             return cb(new Error('Not a valid image.. use only PNG, JPEG, JPG'))
-//         }
-
-//         cb(undefined, true)
-//         // cb( new Error('file type in not accepted') )
-//         // cb( undefined, true )
-//         // cb( undefined, false )
-//     }
-// })
-
-// // POST actualizar imagen avater del usuario autenticado
-// router.post('/users/me/avatar', auth, upload.single('avatar'), async (req, res) => {
-
-//     const buffer = await sharp(req.file.buffer).resize({ width: 250, height: 250 }).png().toBuffer()
-
-//     req.user.avatar = buffer
-
-//     await req.user.save()
-
-//     res.send()
-
-// }, (error, req, res, next) => {  // handle error while loading upload
-//     res.status(400).send({ error: error.message })
-// })
-
-
-// // DELETE elminar el avatar del usuario autenticado
-// router.delete('/users/me/avatar', auth, async (req, res) => {
-
-//     req.user.avatar = undefined
-//     await req.user.save()
-
-//     res.send()
-// })
-
-// const MessagingResponse = require('twilio').twiml.MessagingResponse
-
-// router.post('/sms', (req, res) => {
-
-//     const twiml = new MessagingResponse()
-
-//     twiml.message('Codigo de acceso 103456 expira en 5 minutos')
-
-//     res.set('Content-Type', 'text/xml')
-//     res.send(twiml.toString())
-
-// })
-
-// const isComparaArreglosJSON = (origen, destino) => {
-//     const resultadoLogico = origen.every((actual) => destino.includes(actual))
-//     return resultadoLogico
-// }
-
-// module.exports = router
