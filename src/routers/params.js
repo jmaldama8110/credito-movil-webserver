@@ -31,7 +31,7 @@ router.get('/parametros', authcass, (req, res) => {
 
     };
 
-    res.send();
+    res.send(parametros);
 
 });
 
