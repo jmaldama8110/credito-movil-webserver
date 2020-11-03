@@ -9,6 +9,17 @@ const { fxGetCurrentToken } = require('../middleware/mifostoken');
 const { prestamoMapper, planpagosMapper, clienteMovs } = require('../model/prestamo');
 
 
+
+router.post('/prestamo',authcass, (req,res)=>{
+
+
+    console.log(req.body);
+
+    
+    res.status(201).send();
+
+})
+
 router.get('/dashboard', authcass, async (req, res) => {
 
 

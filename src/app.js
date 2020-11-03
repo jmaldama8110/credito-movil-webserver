@@ -5,7 +5,7 @@ const { cliente } = require('./db/cassandra-db');
 
 const usuarioRouter = require('./routers/usuario');
 const prestamoRouter = require('./routers/prestamo');
-
+const paramsRouter = require('./routers/params');
 
 const { fxInitMemoryDB, fxUpdateMemoryDB } = require('./middleware/mifostoken');
 
@@ -15,6 +15,7 @@ app.use(express.json({ limit: '50mb' }));
 
 app.use(usuarioRouter);
 app.use(prestamoRouter);
+app.use(paramsRouter);
 
 
 const fxInicializar = async () => {
