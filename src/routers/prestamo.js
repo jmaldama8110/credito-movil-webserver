@@ -7,15 +7,16 @@ const authcass = require('../middleware/authcass');
 const { fxGetCurrentToken } = require('../middleware/mifostoken');
 
 const { prestamoMapper, planpagosMapper, clienteMovs } = require('../model/prestamo');
+const { LocalInstance } = require('twilio/lib/rest/api/v2010/account/availablePhoneNumber/local');
 
 
 
-router.post('/prestamo',authcass, (req,res)=>{
+router.post('/prestamo', authcass, (req, res) => {
 
 
     console.log(req.body);
 
-    
+
     res.status(201).send();
 
 })
@@ -109,68 +110,69 @@ router.get('/usuarios/syncloandata', authcass, async (req, res) => {
 
             for (i = 0; i < nitems; i++) {
 
-                const activo = respuesta.data.items[i].status.active;
-                const loanId = respuesta.data.items[i].id;
+                const estatus = respuesta.data.items[i].status.id;
+                if (estatus <= 300) {
 
-                if (activo) {
+                    const loanId = respuesta.data.items[i].id;
+                    const submittedOnDate = respuesta.data.items[i].timeline.submittedOnDate;
+                    const approvedOnDate = respuesta.data.items[i].timeline.approvedOnDate;
+                    const actualDisbursementDate = respuesta.data.items[i].timeline.actualDisbursementDate;
+                    const importe = respuesta.data.items[i].principal;
 
                     // movimientos
-                    const fechaSolicitud =
-                        `${respuesta.data.items[i].timeline.submittedOnDate[0]}-
-                            ${respuesta.data.items[i].timeline.submittedOnDate[1]}-
-                            ${respuesta.data.items[i].timeline.submittedOnDate[2]}-`;
+                    if (submittedOnDate) {
+                        const fechaSolicitud = `${submittedOnDate[0]}-${submittedOnDate[1]}-${submittedOnDate[2]}`;
+                        await clienteMovs.insert({
+                            account_no: req.user.accountNo,
+                            fecha_mov: fechaSolicitud,
+                            prestamo_id: loanId.toString(),
+                            orden: 400,
+                            importe,
+                            mensaje: 'Tu solicitud ha sido enviada, en breve te contactaremos',
+                            referencia: '',
+                            tipo: 'LOANSUB',
+                            tipo_nom: 'CREDITO en Tramite'
+                        });
 
-                    const fechaAprobacion =
-                        `${respuesta.data.items[i].timeline.approvedOnDate[0]}-
-                            ${respuesta.data.items[i].timeline.approvedOnDate[1]}-
-                            ${respuesta.data.items[i].timeline.approvedOnDate[2]}-`;
+                    }
 
-                    const fechaDesembolso =
-                        `${respuesta.data.items[i].timeline.actualDisbursementDate[0]}-
-                            ${respuesta.data.items[i].timeline.actualDisbursementDate[1]}-
-                            ${respuesta.data.items[i].timeline.actualDisbursementDate[2]}-`;
+                    if (approvedOnDate) {
+                        const fechaAprobacion = `${approvedOnDate[0]}-${approvedOnDate[1]}-${approvedOnDate[2]}`;
+                        await clienteMovs.insert({
+                            account_no: req.user.accountNo,
+                            fecha_mov: fechaAprobacion,
+                            prestamo_id: loanId.toString(),
+                            orden: 300,
+                            importe,
+                            mensaje: 'Felicidades, tienes tu solicitud ha sido aprobada',
+                            referencia: '',
+                            tipo: 'LOANAPR',
+                            tipo_nom: 'CREDITO Aprobado'
+                        });
 
-                    await clienteMovs.insert({
-                        account_no: req.user.accountNo,
-                        fecha_mov: fechaSolicitud,
-                        prestamo_id: loanId.toString(),
-                        orden: 400,
-                        importe: respuesta.data.items[i].summary.principalDisbursed,
-                        mensaje: 'Tu solicitud ha sido enviada, en breve te contactaremos',
-                        referencia: '',
-                        tipo: 'LOANSUB',
-                        tipo_nom: 'CREDITO en Tramite'
-                    });
-                    await clienteMovs.insert({
-                        account_no: req.user.accountNo,
-                        fecha_mov: fechaAprobacion,
-                        prestamo_id: loanId.toString(),
-                        orden: 300,
-                        importe: respuesta.data.items[i].summary.principalDisbursed,
-                        mensaje: 'Felicidades, tienes tu solicitud ha sido aprobada',
-                        referencia: '',
-                        tipo: 'LOANAPR',
-                        tipo_nom: 'CREDITO Aprobado'
-                    });
+                    }
 
-                    await clienteMovs.insert({
-                        account_no: req.user.accountNo,
-                        fecha_mov: fechaDesembolso,
-                        prestamo_id: loanId.toString(),
-                        orden: 200,
-                        importe: respuesta.data.items[i].summary.principalDisbursed,
-                        mensaje: 'Felicidades tu crédito ha sido entregado! es importante que mantengas un historial limpio',
-                        referencia: '',
-                        tipo: 'LOANDIS',
-                        tipo_nom: 'CREDITO Entregado'
-                    });
+                    if (actualDisbursementDate) {
+                        const fechaDesembolso = `${actualDisbursementDate[0]}-${actualDisbursementDate[1]}-${actualDisbursementDate[2]}`;
+                        await clienteMovs.insert({
+                            account_no: req.user.accountNo,
+                            fecha_mov: fechaDesembolso,
+                            prestamo_id: loanId.toString(),
+                            orden: 200,
+                            importe,
+                            mensaje: 'Felicidades tu crédito ha sido entregado! es importante que mantengas un historial limpio',
+                            referencia: '',
+                            tipo: 'LOANDIS',
+                            tipo_nom: 'CREDITO Entregado'
+                        });
+
+                    }
 
                     const loanSchedData = await axios.get(`${process.env.MIFOS_BASEURL}/api/v1/loanrepaymentschedule/${loanId}`);
                     const nPagosPlan = loanSchedData.data.repaymentSchedule.periods.length;
                     const cuota = loanSchedData.data.repaymentSchedule.periods[1].totalOriginalDueForPeriod;
 
                     for (j = 0; j < nPagosPlan; j++) {
-
                         const fechaPago = `${loanSchedData.data.repaymentSchedule.periods[j].dueDate[0]}-${loanSchedData.data.repaymentSchedule.periods[j].dueDate[1]}-${loanSchedData.data.repaymentSchedule.periods[j].dueDate[2]}`;
                         const planpagoData = {
                             account_no: req.user.accountNo,
@@ -204,28 +206,35 @@ router.get('/usuarios/syncloandata', authcass, async (req, res) => {
 
                     }
 
-                    let fechaVencidoDesde = respuesta.data.items[i].summary.overdueSinceDate;
-                    if (fechaVencidoDesde)
-                        fechaVencidoDesde = `${respuesta.data.items[i].summary.overdueSinceDate[0]}-${respuesta.data.items[i].summary.overdueSinceDate[1]}-${respuesta.data.items[i].summary.overdueSinceDate[2]}`;
+                    const loanItem = respuesta.data.items[i];
+                    const estaVencido = loanItem.inArrears;
+                    
+                    const saldoTotal = ('summary' in loanItem) ? loanItem.summary.principalOutstanding: 0;
+                    const vencidoDesde = ( 'summary' in loanItem ) && (estaVencido) ? `${loanItem.summary.overdueSinceDate[0]}-${loanItem.summary.overdueSinceDate[1]}-${loanItem.summary.overdueSinceDate[2]}` : undefined;
+                    const saldoVencido = ('summary' in loanItem ) ? loanItem.summary.totalOverdue : 0;
+                    const montoOriginal = ('summary' in loanItem ) ? loanItem.summary.principalDisbursed: importe;
+
 
                     const prestamoData = {
                         account_no: req.user.accountNo,
                         prestamo_account_no: respuesta.data.items[i].accountNo,
                         prestamo_id: loanId.toString(),
                         cuota,
-                        monto_original: respuesta.data.items[i].summary.principalDisbursed,
                         nombre_producto: respuesta.data.items[i].loanProductName,
                         plazo: respuesta.data.items[i].numberOfRepayments,
-                        saldo_total: respuesta.data.items[i].summary.principalOutstanding,
-                        tipo_plazo: respuesta.data.items[i].repaymentFrequencyType.value,
-                        vencido_desde: fechaVencidoDesde,
+                        tipo_plazo: respuesta.data.items[i].repaymentFrequencyType.value, 
+                        estatus: estatus.toString(),
                         atrasado: respuesta.data.items[i].inArrears,
-                        saldo_vencido: respuesta.data.items[i].summary.totalExpectedRepayment
+
+                        saldo_total: saldoTotal,
+                        vencido_desde: vencidoDesde,
+                        saldo_vencido: saldoVencido,
+                        monto_original: montoOriginal
                     }
                     await prestamoMapper.insert(prestamoData);
 
+                } //// cierre de condicion que evalua cada estatus de cada prestamo
 
-                }
 
             }
 
