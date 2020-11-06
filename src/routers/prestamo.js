@@ -16,7 +16,6 @@ router.post('/prestamo', authcass, (req, res) => {
 
     console.log(req.body);
 
-
     res.status(201).send();
 
 })
@@ -117,11 +116,16 @@ router.get('/usuarios/syncloandata', authcass, async (req, res) => {
                     const submittedOnDate = respuesta.data.items[i].timeline.submittedOnDate;
                     const approvedOnDate = respuesta.data.items[i].timeline.approvedOnDate;
                     const actualDisbursementDate = respuesta.data.items[i].timeline.actualDisbursementDate;
+                    const expectedMaturityDate = respuesta.data.items[i].timeline.expectedMaturityDate;
                     const importe = respuesta.data.items[i].principal;
+                    const propositoId = respuesta.data.items[i].loanPurposeId;
+                    
+
 
                     // movimientos
+                    let fechaSolicitud;
                     if (submittedOnDate) {
-                        const fechaSolicitud = `${submittedOnDate[0]}-${submittedOnDate[1]}-${submittedOnDate[2]}`;
+                        fechaSolicitud = `${submittedOnDate[0]}-${submittedOnDate[1]}-${submittedOnDate[2]}`;
                         await clienteMovs.insert({
                             account_no: req.user.accountNo,
                             fecha_mov: fechaSolicitud,
@@ -135,9 +139,15 @@ router.get('/usuarios/syncloandata', authcass, async (req, res) => {
                         });
 
                     }
+                    let fechaVencimiento;
+                    if( expectedMaturityDate ){
+                        fechaVencimiento = `${expectedMaturityDate[0]}-${expectedMaturityDate[1]}-${expectedMaturityDate[2]}`;
+                    }
 
+
+                    let fechaAprobacion;
                     if (approvedOnDate) {
-                        const fechaAprobacion = `${approvedOnDate[0]}-${approvedOnDate[1]}-${approvedOnDate[2]}`;
+                        fechaAprobacion = `${approvedOnDate[0]}-${approvedOnDate[1]}-${approvedOnDate[2]}`;
                         await clienteMovs.insert({
                             account_no: req.user.accountNo,
                             fecha_mov: fechaAprobacion,
@@ -152,8 +162,9 @@ router.get('/usuarios/syncloandata', authcass, async (req, res) => {
 
                     }
 
+                    let fechaDesembolso;
                     if (actualDisbursementDate) {
-                        const fechaDesembolso = `${actualDisbursementDate[0]}-${actualDisbursementDate[1]}-${actualDisbursementDate[2]}`;
+                        fechaDesembolso = `${actualDisbursementDate[0]}-${actualDisbursementDate[1]}-${actualDisbursementDate[2]}`;
                         await clienteMovs.insert({
                             account_no: req.user.accountNo,
                             fecha_mov: fechaDesembolso,
@@ -226,6 +237,12 @@ router.get('/usuarios/syncloandata', authcass, async (req, res) => {
                         estatus: estatus.toString(),
                         atrasado: respuesta.data.items[i].inArrears,
 
+                        fecha_solicitud: fechaSolicitud,
+                        fecha_aprobacion: fechaAprobacion,
+                        fecha_desembolso: fechaDesembolso,
+                        fecha_vencimiento: fechaVencimiento,
+                        proposito_id : propositoId,
+                        proposito_description: 'ADQUIRIR O COMPRAR MERCANCIA',
                         saldo_total: saldoTotal,
                         vencido_desde: vencidoDesde,
                         saldo_vencido: saldoVencido,

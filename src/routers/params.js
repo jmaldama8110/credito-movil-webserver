@@ -22,11 +22,13 @@ router.get('/parametros', authcass, (req, res) => {
                 { id: '3', valor: 'Mensual', external_id: '4' }
             ],
             destinoPrestamo: [
-                { id: 1, valor: 'Adquisición de mercancia', external_id: '2' },
-                { id: 2, valor: 'Inversion en maquinaria o herramienta', external_id: '3' },
-                { id: 3, valor: 'Gastos personales', external_id: '4' },
-                { id: 4, valor: 'Remodelación de vivienda', external_id: '5' },
-                { id: 1, valor: 'Otros', external_id: '6' }]
+                { id: 0, valor: 'COMPRAR LOCAL O VEHICULO', external_id: '2' },
+                { id: 1, valor: 'ADQUIRIR O COMPRAR MERCANCIA', external_id: '3' },
+                { id: 2, valor: 'COMPRAR MAQUINARIA, EQUIPO O HERRAMIENTAS', external_id: '4' },
+                { id: 5, valor: 'PAGAR DEUDAS DEL NEGOCIO', external_id: '5' },
+                { id: 6, valor: 'OTRO FIN RELACIONADO', external_id: '6' },
+                { id: 7, valor: 'FINES AJENOS AL NEGOCIO', external_id: '7' }
+            ]
         }
 
     };
